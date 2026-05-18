@@ -381,8 +381,8 @@ There are three common delivery styles:
 
 ```txt
 At-most-once    = send at most one time, but the event may be lost
-At-least-once   = send at least one time, but duplicates may happen
-Exactly-once    = sounds perfect, but is very hard in distributed systems
+At-least-once   = send at least one time, but duplicates may sohappen
+Exactly-once    = unds perfect, but is very hard in distributed systems
 ```
 
 Postie chooses **at-least-once delivery**.
