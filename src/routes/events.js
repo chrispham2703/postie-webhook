@@ -68,7 +68,7 @@ router.get('/:id', (req, res) => {
         data: {
             id: id,
             status: 'pending',
-            // ... các thông tin khác
+
         },
     });
 });
