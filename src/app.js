@@ -4,6 +4,7 @@ const morgan = require("morgan");
 const cors = require("cors");
 
 const healthRouter = require("./routes/health");
+const eventRouter = require("./routes/events");
 const notFoundHandler = require("./middleware/notFoundHandler");
 const errorHandler = require("./middleware/errorHandler");
 
@@ -15,6 +16,7 @@ app.use(morgan('combined'));
 app.use(cors());
 app.use(express.json());
 app.use("/health", healthRouter);
+app.use("/api/events", eventRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
