@@ -58,13 +58,19 @@ router.get('/', (req, res) => {
 // 3. GET /api/events/:id
 router.get('/:id', (req, res) => {
     const { id } = req.params;
+    const event = findById(id);
 
-    res.status(200).json({
-        data: {
-            id: id,
-            status: 'pending',
+    if (!event) {
+        return res.status(404).json({
+            error: {
+                code: 'EVENT_NOT_FOUND',
+                message: 'Event with the specified ID does not exist'
+            }
+        });
+    }
 
-        },
+    return res.status(200).json({
+        data: event
     });
 });
 
