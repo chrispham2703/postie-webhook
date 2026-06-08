@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
+const {save, findAll, findById} = require('../store/eventStore.js');
 // 1. POST /api/events - Create new event
 router.post(
     '/',
@@ -31,17 +32,8 @@ router.post(
                 details: errors.array(),
             });
         }
-
         const { eventType, payload, targetUrl } = req.body;
-
-        const newEvent = {
-            id: `evt_${Math.random().toString(36).substr(2, 9)}`,
-            eventType,
-            payload,
-            targetUrl,
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-        };
+        const newEvent = save({ eventType, payload, targetUrl});
 
         res.status(201).json({
             data: newEvent,
