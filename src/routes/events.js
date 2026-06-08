@@ -43,8 +43,11 @@ router.post(
 
 // 2. GET /api/events
 router.get('/', (req, res) => {
+
+    const allEvents = findAll();
+
     res.status(200).json({
-        data: [],
+        data: allEvents,
         meta: {
             nextCursor: null,
             hasMore: false,
