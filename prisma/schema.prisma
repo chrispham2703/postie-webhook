@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Endpoint {
+  id           String   @id
+  url          String
+  status       String   @default("active") // active / circuit-open
+  failureCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  events       Event[]
+
+  @@map("endpoints")
+}
+
+model Event {
+  id        String   @id
+  eventType String
+  payload   Json
+  targetUrl String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  endpointId       String
+  // not allow to delete endpoint if thhat event still keep history
+  endpoint         Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Restrict)
+  deliveryAttempts DeliveryAttempt[]
+
+  @@index([endpointId])
+  @@map("events")
+}
+
+model DeliveryAttempt {
+  id           String   @id
+  statusCode   Int
+  attemptNum   Int
+  responseBody String?
+  createdAt    DateTime @default(now())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("delivery_attempts")
+}
