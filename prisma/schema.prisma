@@ -13,13 +13,29 @@ model Organization {
   slug      String   @unique
   createdAt DateTime @default(now())
 
-  users   User[]
-  apiKeys ApiKey[]
-  apps    Application[]
+  users        User[]
+  apiKeys      ApiKey[]
+  apps         Application[]
+  subscription Subscription?
+  usageRecords UsageRecord[]
 
   @@map("organizations")
 }
 
+
+model Plan {
+  id            String  @id
+  name          String
+  priceMonthly  Int
+  eventLimit    Int
+  endpointLimit Int
+  retentionDays Int
+  features      Json?
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
 
 model User {
   id           String   @id
@@ -50,6 +66,36 @@ model ApiKey {
 
   @@index([orgId])
   @@map("api_keys")
+}
+
+model Subscription {
+  id                   String   @id
+  orgId                String   @unique
+  planId               String
+  status               String   @default("active")
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan Plan         @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model UsageRecord {
+  id            String @id
+  orgId         String
+  period        String
+  eventCount    Int    @default(0)
+  deliveryCount Int    @default(0)
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, period])
+  @@index([orgId])
+  @@map("usage_records")
 }
 
 model Application {
