@@ -7,50 +7,183 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organization {
+  id        String   @id
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  users        User[]
+  apiKeys      ApiKey[]
+  apps         Application[]
+  subscription Subscription?
+  usageRecords UsageRecord[]
+
+  @@map("organizations")
+}
+
+
+model Plan {
+  id            String  @id
+  name          String
+  priceMonthly  Int
+  eventLimit    Int
+  endpointLimit Int
+  retentionDays Int
+  features      Json?
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("member")
+  orgId        String
+  createdAt    DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("users")
+}
+
+model ApiKey {
+  id         String    @id
+  keyHash    String    @unique
+  prefix     String
+  name       String
+  orgId      String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("api_keys")
+}
+
+model Subscription {
+  id                   String   @id
+  orgId                String   @unique
+  planId               String
+  status               String   @default("active")
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan Plan         @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model UsageRecord {
+  id            String @id
+  orgId         String
+  period        String
+  eventCount    Int    @default(0)
+  deliveryCount Int    @default(0)
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, period])
+  @@index([orgId])
+  @@map("usage_records")
+}
+
+model Application {
+  id        String   @id
+  orgId     String
+  name      String
+  uid       String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  endpoints Endpoint[]
+  events    Event[]
+
+  @@unique([orgId, uid])
+  @@index([orgId])
+  @@map("applications")
+}
+
 model Endpoint {
   id           String   @id
+  appId        String
   url          String
-  status       String   @default("active") // active / circuit-open
+  secret       String
+  description  String?
+  filterTypes  String[]
+  headers      Json?
+  status       String   @default("active")
   failureCount Int      @default(0)
+  disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
-  events       Event[]
+  updatedAt    DateTime @updatedAt
 
+  app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
+
+  @@index([appId])
   @@map("endpoints")
 }
 
 model Event {
   id        String   @id
+  appId     String
+  messageId String?  @unique
   eventType String
   payload   Json
-  targetUrl String
-  status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  attemptCount Int @default(0)
-  nextAttemptAt DateTime?
-  endpointId       String
 
-  @@index([nextAttemptAt])
+  app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
 
-  // not allow to delete endpoint if that event still keep history
-  endpoint         Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Restrict)
-  deliveryAttempts DeliveryAttempt[]
-
-  @@index([endpointId])
+  @@index([appId])
   @@map("events")
+}
+
+model Delivery {
+  id            String    @id
+  eventId       String
+  endpointId    String
+  status        String    @default("pending")
+  attemptCount  Int       @default(0)
+  nextAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  endpoint Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  attempts DeliveryAttempt[]
+
+  @@unique([eventId, endpointId])
+  @@index([nextAttemptAt])
+  @@index([endpointId])
+  @@map("deliveries")
 }
 
 model DeliveryAttempt {
   id           String   @id
-  statusCode   Int
+  deliveryId   String
   attemptNum   Int
+  statusCode   Int
   responseBody String?
+  durationMs   Int?
   createdAt    DateTime @default(now())
-  durationMs    Int?
 
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 
-  @@index([eventId])
+  @@index([deliveryId])
   @@map("delivery_attempts")
 }
+
