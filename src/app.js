@@ -7,7 +7,7 @@ const healthRouter = require("./routes/health");
 const eventRouter = require("./routes/events");
 const notFoundHandler = require("./middleware/notFoundHandler");
 const errorHandler = require("./middleware/errorHandler");
-
+const { startRetryWorker } = require("./workers/retryWorker");
 dotenv.config();
 
 const app = express();
@@ -25,5 +25,6 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+    startRetryWorker(5000);
 });
 

@@ -21,7 +21,7 @@ router.post(
             .trim()
             .isURL().withMessage('targetUrl must be a valid URL'),
     ],
-    (req, res) => {
+    async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(422).json({
@@ -33,7 +33,7 @@ router.post(
             });
         }
         const { eventType, payload, targetUrl } = req.body;
-        const newEvent = save({ eventType, payload, targetUrl});
+        const newEvent = await save({ eventType, payload, targetUrl});
 
         res.status(201).json({
             data: newEvent,
@@ -42,9 +42,9 @@ router.post(
 );
 
 // 2. GET /api/events
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
 
-    const allEvents = findAll();
+    const allEvents = await findAll();
 
     res.status(200).json({
         data: allEvents,
@@ -56,9 +56,9 @@ router.get('/', (req, res) => {
 });
 
 // 3. GET /api/events/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
     const { id } = req.params;
-    const event = findById(id);
+    const event = await findById(id);
 
     if (!event) {
         return res.status(404).json({

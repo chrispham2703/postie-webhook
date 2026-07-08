@@ -26,9 +26,13 @@ model Event {
   status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  attemptCount Int @default(0)
+  nextAttemptAt DateTime?
   endpointId       String
-  // not allow to delete endpoint if thhat event still keep history
+
+  @@index([nextAttemptAt])
+
+  // not allow to delete endpoint if that event still keep history
   endpoint         Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Restrict)
   deliveryAttempts DeliveryAttempt[]
 
@@ -42,6 +46,7 @@ model DeliveryAttempt {
   attemptNum   Int
   responseBody String?
   createdAt    DateTime @default(now())
+  durationMs    Int?
 
   eventId String
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
