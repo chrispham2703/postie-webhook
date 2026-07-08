@@ -83,49 +83,61 @@ model Endpoint {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  app    Application @relation(fields: [appId], references: [id], onDelete: Cascade)
-  events Event[]
+  app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
 
   @@index([appId])
   @@map("endpoints")
 }
 
 model Event {
-  id            String    @id
-  appId         String
-  eventType     String
-  payload       Json
-  targetUrl     String
-  status        String    @default("pending")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  attemptCount  Int       @default(0)
-  nextAttemptAt DateTime?
-  endpointId    String
+  id        String   @id
+  appId     String
+  messageId String?  @unique
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([nextAttemptAt])
-
-  app              Application       @relation(fields: [appId], references: [id], onDelete: Cascade)
-  endpoint         Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Restrict)
-  deliveryAttempts DeliveryAttempt[]
+  app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
 
   @@index([appId])
-  @@index([endpointId])
   @@map("events")
+}
+
+model Delivery {
+  id            String    @id
+  eventId       String
+  endpointId    String
+  status        String    @default("pending")
+  attemptCount  Int       @default(0)
+  nextAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  endpoint Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  attempts DeliveryAttempt[]
+
+  @@unique([eventId, endpointId])
+  @@index([nextAttemptAt])
+  @@index([endpointId])
+  @@map("deliveries")
 }
 
 model DeliveryAttempt {
   id           String   @id
-  statusCode   Int
+  deliveryId   String
   attemptNum   Int
+  statusCode   Int
   responseBody String?
+  durationMs   Int?
   createdAt    DateTime @default(now())
-  durationMs    Int?
 
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 
-  @@index([eventId])
+  @@index([deliveryId])
   @@map("delivery_attempts")
 }
 
