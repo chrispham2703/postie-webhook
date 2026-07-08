@@ -7,6 +7,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organization {
+  id        String   @id
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  users   User[]
+  apiKeys ApiKey[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("member")
+  orgId        String
+  createdAt    DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("users")
+}
+
+model ApiKey {
+  id         String    @id
+  keyHash    String    @unique
+  prefix     String
+  name       String
+  orgId      String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("api_keys")
+}
+
 model Endpoint {
   id           String   @id
   url          String
@@ -54,3 +97,4 @@ model DeliveryAttempt {
   @@index([eventId])
   @@map("delivery_attempts")
 }
+
