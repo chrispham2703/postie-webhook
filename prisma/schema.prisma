@@ -15,9 +15,11 @@ model Organization {
 
   users   User[]
   apiKeys ApiKey[]
+  apps    Application[]
 
   @@map("organizations")
 }
+
 
 model User {
   id           String   @id
@@ -50,35 +52,64 @@ model ApiKey {
   @@map("api_keys")
 }
 
+model Application {
+  id        String   @id
+  orgId     String
+  name      String
+  uid       String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  endpoints Endpoint[]
+  events    Event[]
+
+  @@unique([orgId, uid])
+  @@index([orgId])
+  @@map("applications")
+}
+
 model Endpoint {
   id           String   @id
+  appId        String
   url          String
-  status       String   @default("active") // active / circuit-open
+  secret       String
+  description  String?
+  filterTypes  String[]
+  headers      Json?
+  status       String   @default("active")
   failureCount Int      @default(0)
+  disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
-  events       Event[]
+  updatedAt    DateTime @updatedAt
 
+  app    Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  events Event[]
+
+  @@index([appId])
   @@map("endpoints")
 }
 
 model Event {
-  id        String   @id
-  eventType String
-  payload   Json
-  targetUrl String
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  attemptCount Int @default(0)
+  id            String    @id
+  appId         String
+  eventType     String
+  payload       Json
+  targetUrl     String
+  status        String    @default("pending")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  attemptCount  Int       @default(0)
   nextAttemptAt DateTime?
-  endpointId       String
+  endpointId    String
 
   @@index([nextAttemptAt])
 
-  // not allow to delete endpoint if that event still keep history
+  app              Application       @relation(fields: [appId], references: [id], onDelete: Cascade)
   endpoint         Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Restrict)
   deliveryAttempts DeliveryAttempt[]
 
+  @@index([appId])
   @@index([endpointId])
   @@map("events")
 }
