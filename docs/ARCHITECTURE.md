@@ -683,3 +683,55 @@ A simple final sentence:
 | Idempotency | Handling duplicate events safely |
 | Circuit breaker | Temporarily stop calling an endpoint that keeps failing |
 | Docker Compose | A tool to start local infrastructure like PostgreSQL and RabbitMQ |
+
+---
+
+## 16. Recovery Mechanism Design (Write-up Only)
+
+This section is a design, not an implementation. Nothing here is built yet — it exists to think through an edge case found during development.
+
+### The edge case
+
+`POST /api/events` does two separate things: (1) save the event to PostgreSQL, (2) publish a message to RabbitMQ. These are two different systems, and step 2 can fail in ways step 1 cannot detect in advance.
+
+If publishing fails, Postie catches the error and marks the event `status = "queue_failed"`. That covers the failure Postie can see. But there is a second, quieter failure mode: **publishing succeeds, but the message never gets processed** — for example, no worker was running at the time, or a worker picked it up and crashed before acknowledging it. From the API's point of view, `publish()` returning without an error only proves the message reached the RabbitMQ broker. It does not prove any worker ever handled it.
+
+So there are two kinds of "stuck" events:
+
+```txt
+status = "queue_failed"   → Postie knows this failed. It's visible.
+status = "received"       → Postie assumes this is fine, but has no proof it was ever
+                             picked up. If nothing ever consumes it, it stays "received"
+                             forever, silently.
+```
+
+Feynman explanation:
+
+> Handing a letter to the post office and getting a receipt only proves the post office has it. It does not prove the letter ever reached the mailbox. Postie's current logging is the receipt — not delivery confirmation.
+
+### Design: a recovery scan
+
+A scheduled job (e.g. a cron task, run every 1 minute) scans PostgreSQL for events that look stuck:
+
+```sql
+SELECT * FROM events
+WHERE (status = 'queue_failed')
+   OR (status = 'received' AND created_at < NOW() - INTERVAL '5 minutes')
+```
+
+For each match, the recovery job re-publishes the event's id back onto the queue, the same way the original API request did:
+
+```txt
+Recovery job wakes up (every 1 minute)
+→ finds events stuck for more than 5 minutes
+→ re-publishes each one to RabbitMQ
+→ logs the recovery attempt
+```
+
+To avoid retrying forever against a target that will never work, recovery attempts should be capped (for example, stop after 3 recovery attempts and leave the event as a visible failure for a human to inspect — similar in spirit to the DLQ idea in §7).
+
+### Known limitation
+
+This design cannot fully distinguish *"still legitimately waiting to be processed"* from *"actually stuck"* — a `received` event that is 5 minutes old might just be sitting behind a busy queue, not lost. The current two-state model (`received` / `queue_failed`) does not have a positive "confirmed delivered" signal, because nothing currently marks an event as successfully consumed.
+
+A more precise version of this design would add an explicit status transition — set only once a worker actually acknowledges the message — so the recovery scan could tell "genuinely stuck" apart from "just slow" with certainty, instead of relying on a time-based guess. That is future work, intentionally out of scope for this write-up.
