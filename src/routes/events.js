@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
-const { save, findAll, findById } = require('../store/eventStore.js');
+const { save, findAll, findById, updateStatus } = require('../store/eventStore.js');
 const { publish } = require('../config/rabbitmq.js');
 
 // 1. POST /api/events
@@ -36,9 +36,15 @@ router.post(
         }
 
         const { appId, eventType, payload, messageId } = req.body;
-        const newEvent = await save({ appId, eventType, payload, messageId });
-
-        publish(newEvent.id);
+        const newEvent = await save({ appId, eventType, payload, messageId }); // event A saved to Postgres
+        console.log(`[Event] created ${newEvent.id}`);
+        try {
+            publish(newEvent.id);//event B pushed to rabbitmq
+            console.log(`[Event] published ${newEvent.id} to queue`);
+        } catch (err) {
+            await updateStatus(newEvent.id, 'queue_failed');
+            console.error(`[Event] failed to publish ${newEvent.id}:`, err.message);
+        }
 
         res.status(201).json({ data: newEvent });
     }
@@ -46,10 +52,20 @@ router.post(
 
 // 2. GET /api/events
 router.get('/', async (req, res) => {
-    const allEvents = await findAll();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const cursor = req.query.cursor;
+
+    const events = await findAll({ cursor, limit });
+
+    const hasMore = events.length > limit;
+    const page = hasMore ? events.slice(0, limit) : events;
+
     res.status(200).json({
-        data: allEvents,
-        meta: { nextCursor: null, hasMore: false },
+        data: page,
+        meta: {
+            nextCursor: hasMore ? page[page.length - 1].id : null,
+            hasMore,
+        },
     });
 });
 
