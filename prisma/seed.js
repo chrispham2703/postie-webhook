@@ -23,7 +23,19 @@ async function main() {
         },
     });
 
-    console.log('Seeded:', { org: org.id, app: app.id });
+    const endpoint = await prisma.endpoint.upsert({
+        where: { id: 'ep_test_1' },
+        update: {},
+        create: {
+            id: 'ep_test_1',
+            appId: app.id,
+            url: 'https://httpbin.org/post',
+            secret: 'whsec_test_1',
+            filterTypes: [],
+        },
+    });
+
+    console.log('Seeded:', { org: org.id, app: app.id, endpoint: endpoint.id });
 }
 
 main()

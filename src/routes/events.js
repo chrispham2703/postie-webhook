@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
 const { save, findAll, findById, updateStatus } = require('../store/eventStore.js');
+const { createDeliveries } = require('../services/deliveryService.js');
 const { publish } = require('../config/rabbitmq.js');
 
 // 1. POST /api/events
@@ -36,14 +37,17 @@ router.post(
         }
 
         const { appId, eventType, payload, messageId } = req.body;
-        const newEvent = await save({ appId, eventType, payload, messageId }); // event A saved to Postgres
+        const newEvent = await save({ appId, eventType, payload, messageId });
         console.log(`[Event] created ${newEvent.id}`);
         try {
-            publish(newEvent.id);//event B pushed to rabbitmq
-            console.log(`[Event] published ${newEvent.id} to queue`);
+            const deliveries = await createDeliveries(newEvent);
+            for (const delivery of deliveries) {
+                publish(delivery.id);
+            }
+            console.log(`[Event] fanned out ${newEvent.id} to ${deliveries.length} endpoint(s)`);
         } catch (err) {
             await updateStatus(newEvent.id, 'queue_failed');
-            console.error(`[Event] failed to publish ${newEvent.id}:`, err.message);
+            console.error(`[Event] failed to fan out ${newEvent.id}:`, err.message);
         }
 
         res.status(201).json({ data: newEvent });
