@@ -2,6 +2,10 @@ const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+function matchesEvent(endpoint, event) {
+    return endpoint.filterTypes.length === 0 || endpoint.filterTypes.includes(event.eventType);
+}
+
 async function findMatchingEndpoints(event) {
     const endpoints = await prisma.endpoint.findMany({
         where: {
@@ -9,9 +13,7 @@ async function findMatchingEndpoints(event) {
             disabled: false,
         },
     });
-    return endpoints.filter((endpoint) => {
-        return endpoint.filterTypes.length === 0 || endpoint.filterTypes.includes(event.eventType);
-    });
+    return endpoints.filter((endpoint) => matchesEvent(endpoint, event));
 }
 
 async function createDeliveries(event) {
@@ -36,4 +38,4 @@ async function createDeliveries(event) {
     return deliveries;
 }
 
-module.exports = { findMatchingEndpoints, createDeliveries };
+module.exports = { matchesEvent, findMatchingEndpoints, createDeliveries };
