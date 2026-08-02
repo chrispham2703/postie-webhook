@@ -137,14 +137,15 @@ model Endpoint {
 }
 
 model Event {
-  id        String   @id
-  appId     String
-  messageId String?  @unique
-  eventType String
-  payload   Json
-  status    String   @default("received")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id
+  appId            String
+  messageId        String?  @unique
+  eventType        String
+  payload          Json
+  status           String   @default("received")
+  recoveryAttempts Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
   deliveries Delivery[]

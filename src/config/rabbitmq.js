@@ -2,12 +2,20 @@ const amqplib = require('amqplib');
 
 const QUEUE_NAME = 'event.deliver';
 let channel = null;
+let connection = null;
 
 async function connect() {
-    const connection = await amqplib.connect(process.env.RABBITMQ_URL);
+    connection = await amqplib.connect(process.env.RABBITMQ_URL);
     channel = await connection.createChannel();
     await channel.assertQueue(QUEUE_NAME, { durable: true });
     console.log('[RabbitMQ] Connected and channel ready');
+}
+
+async function close() {
+    if (channel) await channel.close();
+    if (connection) await connection.close();
+    channel = null;
+    connection = null;
 }
 
 function publish(deliveryId) {
@@ -37,4 +45,4 @@ function consume(handler) {
     console.log(`[RabbitMQ] Consuming from ${QUEUE_NAME}`);
 }
 
-module.exports = { connect, publish, consume };
+module.exports = { connect, close, publish, consume };
