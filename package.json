@@ -5,7 +5,10 @@
   "scripts": {
     "test": "jest",
     "dev": "nodemon src/app.js",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "start:worker": "node src/workers/deliveryWorker.js",
+    "start:retry-poller": "node src/workers/retryPoller.js",
+    "start:recovery-scan": "node src/workers/recoveryScan.js"
   },
   "repository": {
     "type": "git",
