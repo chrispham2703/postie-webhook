@@ -16,6 +16,8 @@ Client → POST /api/events → saved to PostgreSQL → fanned out to matching E
 - **A delivery worker** (`src/workers/deliveryWorker.js`) that consumes one queued job per `Delivery`, POSTs the event to the endpoint's real URL with an HMAC-SHA256 signature (`X-Postie-Signature`), and records every attempt as a `DeliveryAttempt`.
 - **Retry with exponential backoff** — on failure the worker schedules the next attempt using the ladder in `docs/ARCHITECTURE.md` §5 (30s → 2m → 10m → 1h → 6h → 24h); a separate **retry poller** (`src/workers/retryPoller.js`) wakes up deliveries once their `nextAttemptAt` has passed. After 6 attempts a delivery is marked `failed_permanent` instead of retrying forever (the DLQ concept from §7, at the application level rather than a RabbitMQ dead-letter exchange).
 - **Recovery scan** (`src/workers/recoveryScan.js`) — implements the design in `docs/ARCHITECTURE.md` §16: periodically re-fans-out events stuck at `queue_failed` or `received` for too long, capped at 3 attempts per event.
+- **API key auth** — every request needs `Authorization: Bearer <key>`, checked against a hash (raw keys are never stored). Beyond authentication, requests are scoped per-organization: an `appId`/`Endpoint` id belonging to a different org 404s the same way a nonexistent one would, so a key can't be used to probe what other orgs have.
+- **Endpoint management API** (`POST/GET/PATCH /api/endpoints`) — customers register and update their own endpoints instead of a dev seeding them by hand. No hard delete: `Endpoint` cascades to `Delivery`, so removing one would erase delivery history — disabling (`PATCH { disabled: true }`) keeps the record.
 - **A Postgres schema modeling the full multi-tenant shape** the system is designed to grow into — organizations, applications, endpoints, events, deliveries, delivery attempts, plans/subscriptions for billing — even where the application code doesn't fully exercise every table yet (see Roadmap below).
 
 ## Why these choices
@@ -34,7 +36,7 @@ Node.js · Express · PostgreSQL + Prisma · RabbitMQ (amqplib) · axios · expr
 ```bash
 docker compose up -d        # Postgres + RabbitMQ
 npx prisma migrate deploy   # apply schema
-node prisma/seed.js         # seed a test org/application/endpoint
+node prisma/seed.js         # seed a test org/application/endpoint/api key (prints the key once)
 
 npm run dev                        # API on :3000
 npm run start:worker               # delivery worker, separate terminal
@@ -46,18 +48,25 @@ Run the test suite with `npm test` (needs `docker compose up -d` running — no 
 
 ## API
 
+All routes below require `Authorization: Bearer <api key>`. See `prisma/seed.js` for how a local test key is minted.
+
 | Endpoint | Description |
 |---|---|
-| `POST /api/events` | Create an event, persist it, publish it for delivery |
-| `GET /api/events` | List events, cursor-paginated (`?cursor=`, `?limit=`) |
-| `GET /api/events/:id` | Fetch a single event, `404` if it doesn't exist |
-| `GET /health` | Liveness check |
+| `POST /api/events` | Create an event, fan it out to matching endpoints, publish for delivery |
+| `GET /api/events` | List events for your org, cursor-paginated (`?cursor=`, `?limit=`) |
+| `GET /api/events/:id` | Fetch a single event, `404` if it doesn't exist (or belongs to another org) |
+| `POST /api/endpoints` | Register an endpoint for one of your applications |
+| `GET /api/endpoints` | List your org's endpoints |
+| `GET /api/endpoints/:id` | Fetch a single endpoint |
+| `PATCH /api/endpoints/:id` | Update url/filterTypes/description, or disable it |
+| `GET /health` | Liveness check (no auth) |
 
 ## Roadmap — designed, not yet (re)built
 
 Documented deliberately rather than hidden, since knowing what's missing is part of the design:
 
-- **Endpoint management API.** Right now `Endpoint` rows only exist via `prisma/seed.js` — there's no way for a customer to register/update/disable an endpoint themselves. This is its own epic (Application & Endpoint Management), separate from the delivery pipeline above.
-- **Auth.** `Organization`, `User`, `ApiKey` are modeled in the schema but nothing enforces them yet — `POST /api/events` doesn't check who's calling.
-- **Isolated test database.** The current test suite (`npm test`) runs its integration test against the same dev Postgres/RabbitMQ from `docker-compose.yml`, not a dedicated test instance — fine for now, but test data and dev data currently share the same tables.
+- **Circuit breaker** (`docs/ARCHITECTURE.md` §8) — `Endpoint.failureCount` exists in the schema but nothing increments it or pauses sending to a consistently-failing endpoint yet.
+- **Human login.** `User.passwordHash` is modeled but there's no signup/login — today, an API key is the only credential, meant for server-to-server calls, not a dashboard.
+- **Isolated test database.** The test suite (`npm test`) runs against the same dev Postgres/RabbitMQ from `docker-compose.yml`, not a dedicated test instance — fine for now, but test data and dev data currently share the same tables.
 - **Billing (`Plan`/`Subscription`/`UsageRecord`).** Modeled in the schema, no application code uses them yet.
+- **Real deployment.** `DEPLOY.md` documents the path (Railway + CloudAMQP); nothing has actually been provisioned yet.
