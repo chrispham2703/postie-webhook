@@ -4,7 +4,11 @@ const { body, validationResult } = require('express-validator');
 
 const { save, findAll, findById, updateStatus } = require('../store/eventStore.js');
 const { createDeliveries } = require('../services/deliveryService.js');
+const { findOwnedApplication } = require('../services/applicationService.js');
 const { publish } = require('../config/rabbitmq.js');
+const { apiKeyAuth } = require('../middleware/apiKeyAuth.js');
+
+router.use(apiKeyAuth);
 
 // 1. POST /api/events
 router.post(
@@ -37,6 +41,14 @@ router.post(
         }
 
         const { appId, eventType, payload, messageId } = req.body;
+
+        const app = await findOwnedApplication(appId, req.orgId);
+        if (!app) {
+            return res.status(404).json({
+                error: { code: 'APPLICATION_NOT_FOUND', message: 'appId does not exist for this API key' },
+            });
+        }
+
         const newEvent = await save({ appId, eventType, payload, messageId });
         console.log(`[Event] created ${newEvent.id}`);
         try {
@@ -59,7 +71,9 @@ router.get('/', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
     const cursor = req.query.cursor;
 
-    const events = await findAll({ cursor, limit });
+    const events = await findAll({ cursor, limit, orgId: req.orgId });
+
+
 
     const hasMore = events.length > limit;
     const page = hasMore ? events.slice(0, limit) : events;
@@ -76,7 +90,7 @@ router.get('/', async (req, res) => {
 // 3. GET /api/events/:id
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
-    const event = await findById(id);
+    const event = await findById(id, req.orgId);
 
     if (!event) {
         return res.status(404).json({

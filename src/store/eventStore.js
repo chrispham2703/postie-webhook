@@ -2,8 +2,9 @@ const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-async function findAll({ cursor, limit }) {
+async function findAll({ cursor, limit, orgId }) {
     return await prisma.event.findMany({
+        where: { app: { orgId } },
         take: limit + 1,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
@@ -19,8 +20,8 @@ async function save(data) {
     });
 }
 
-async function findById(id) {
-    const event = await prisma.event.findUnique({ where: { id } });
+async function findById(id, orgId) {
+    const event = await prisma.event.findFirst({ where: { id, app: { orgId } } });
     return event ?? null;
 }
 async function updateStatus(id, status) {

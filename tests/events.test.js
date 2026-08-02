@@ -6,6 +6,11 @@ const { connect, close } = require('../src/config/rabbitmq');
 
 const prisma = new PrismaClient();
 
+// Must match the key prisma/seed.js creates for 'org_test_1' — these tests
+// need the real Postgres + RabbitMQ from docker-compose (no isolated test
+// DB yet), seeded via `node prisma/seed.js` before running `npm test`.
+const VALID_KEY = 'postie_test_key_do_not_use_in_prod';
+
 function buildApp() {
     const app = express();
     app.use(express.json());
@@ -13,19 +18,22 @@ function buildApp() {
     return app;
 }
 
-describe('POST /api/events', () => {
-    test('422s when a required field is missing', async () => {
-        const app = buildApp();
-        const res = await request(app).post('/api/events').send({ eventType: 'order.created' });
+describe('POST /api/events auth', () => {
+    test('401s with no Authorization header', async () => {
+        const res = await request(buildApp()).post('/api/events').send({ eventType: 'order.created' });
+        expect(res.status).toBe(401);
+    });
 
-        expect(res.status).toBe(422);
-        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    test('401s with a bogus API key', async () => {
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', 'Bearer not-a-real-key')
+            .send({ eventType: 'order.created' });
+        expect(res.status).toBe(401);
     });
 });
 
-// These need the real Postgres + RabbitMQ from docker-compose (same ones the
-// app/worker use in dev) — there's no isolated test database yet.
-describe('POST /api/events (integration, needs docker compose up)', () => {
+describe('POST /api/events (integration, needs docker compose up + seed)', () => {
     beforeAll(async () => {
         await connect();
     });
@@ -35,13 +43,35 @@ describe('POST /api/events (integration, needs docker compose up)', () => {
         await prisma.$disconnect();
     });
 
+    test('422s when a required field is missing', async () => {
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ eventType: 'order.created' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('404s when appId belongs to a different org (or does not exist)', async () => {
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ appId: 'app_does_not_exist', eventType: 'order.created', payload: { a: 1 } });
+
+        expect(res.status).toBe(404);
+        expect(res.body.error.code).toBe('APPLICATION_NOT_FOUND');
+    });
+
     test('creates the event and fans it out to matching endpoints as Deliveries', async () => {
-        const app = buildApp();
-        const res = await request(app).post('/api/events').send({
-            appId: 'app_test_1',
-            eventType: 'order.created',
-            payload: { orderId: 'test-order' },
-        });
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({
+                appId: 'app_test_1',
+                eventType: 'order.created',
+                payload: { orderId: 'test-order' },
+            });
 
         expect(res.status).toBe(201);
         const eventId = res.body.data.id;
