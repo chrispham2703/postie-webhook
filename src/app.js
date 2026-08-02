@@ -6,6 +6,7 @@ dotenv.config();
 
 const healthRouter = require('./routes/health');
 const eventRouter = require('./routes/events');
+const endpointRouter = require('./routes/endpoints');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 const { connect } = require('./config/rabbitmq');
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/health', healthRouter);
 app.use('/api/events', eventRouter);
+app.use('/api/endpoints', endpointRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
