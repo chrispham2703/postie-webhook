@@ -10,11 +10,11 @@ async function connect() {
     console.log('[RabbitMQ] Connected and channel ready');
 }
 
-function publish(eventId) {
+function publish(deliveryId) {
     if (!channel) throw new Error('[RabbitMQ] Channel not initialized');
     channel.sendToQueue(
         QUEUE_NAME,
-        Buffer.from(JSON.stringify({ eventId })),
+        Buffer.from(JSON.stringify({ deliveryId })),
         { persistent: true }
     );
 }
@@ -25,8 +25,8 @@ function consume(handler) {
     channel.consume(QUEUE_NAME, async (msg) => {
         if (!msg) return;
         try {
-            const { eventId } = JSON.parse(msg.content.toString());
-            await handler(eventId);
+            const { deliveryId } = JSON.parse(msg.content.toString());
+            await handler(deliveryId);
             channel.ack(msg);
         } catch (err) {
             // Drop poison messages instead of requeueing forever. TODO: route to a DLQ.
