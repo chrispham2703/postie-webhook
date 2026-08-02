@@ -1,15 +1,15 @@
-
-
 require('dotenv').config();
+const crypto = require('crypto');
 const amqplib = require('amqplib');
 const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
+const { sign } = require('../utils/signature');
+const { getDelayMs, MAX_ATTEMPTS } = require('../utils/backoff');
 
 const prisma = new PrismaClient();
 const QUEUE_NAME = 'event.deliver';
 const TIMEOUT_MS = 5000;
 
-// 1. Connect to RabbitMQ
 async function start() {
     const connection = await amqplib.connect(process.env.RABBITMQ_URL);
     const channel = await connection.createChannel();
@@ -17,60 +17,98 @@ async function start() {
 
     console.log('[deliveryWorker] connected, waiting for messages...');
 
-    // 2. Consume message from the queue
     channel.consume(QUEUE_NAME, async (msg) => {
         if (!msg) return;
-        const { eventId } = JSON.parse(msg.content.toString());
+        const { deliveryId } = JSON.parse(msg.content.toString());
 
         try {
-            await handleDelivery(eventId);
-            // 7. Acknowledge message
+            await handleDelivery(deliveryId);
             channel.ack(msg);
         } catch (err) {
-            console.error(`[deliveryWorker] error handling ${eventId}:`, err.message);
+            console.error(`[deliveryWorker] error handling ${deliveryId}:`, err.message);
             channel.nack(msg, false, false);
         }
     });
 }
 
-async function handleDelivery(eventId) {
-    // 3. Fetch full event from PostgreSQL by eventId
-    const event = await prisma.event.findUnique({ where: { id: eventId } });
-    if (!event) {
-        console.warn(`[deliveryWorker] event ${eventId} not found`);
+async function handleDelivery(deliveryId) {
+    const delivery = await prisma.delivery.findUnique({
+        where: { id: deliveryId },
+        include: { event: true, endpoint: true },
+    });
+    if (!delivery) {
+        console.warn(`[deliveryWorker] delivery ${deliveryId} not found`);
         return;
     }
 
-    const targetUrl = event.payload.targetUrl || 'https://httpbin.org/post';
+    const { event, endpoint } = delivery;
+    const signature = sign(event.payload, endpoint.secret);
 
     let statusCode = 0;
-    let ok = false;
+    let responseBody = '';
     const startedAt = Date.now();
 
-    // 4. Make HTTP POST to targetUrl with event.payload
     try {
-        const res = await axios.post(targetUrl, event.payload, {
+        const res = await axios.post(endpoint.url, event.payload, {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Postie-Event-Id': event.id,
                 'X-Postie-Event-Type': event.eventType,
+                'X-Postie-Signature': `sha256=${signature}`,
             },
             timeout: TIMEOUT_MS,
             validateStatus: () => true,
         });
         statusCode = res.status;
-        ok = statusCode >= 200 && statusCode < 300;
+        responseBody = JSON.stringify(res.data).slice(0, 1000);
     } catch (err) {
         statusCode = err.code === 'ECONNABORTED' ? 408 : 0;
+        responseBody = err.message || err.code || 'request failed';
     }
 
     const durationMs = Date.now() - startedAt;
+    const ok = statusCode >= 200 && statusCode < 300;
+    const attemptNum = delivery.attemptCount + 1;
 
-    // 5. Record delivery attempt
-    console.log(`[deliveryWorker] attempt eventId=${event.id} status=${statusCode} durationMs=${durationMs}ms`);
+    await prisma.deliveryAttempt.create({
+        data: {
+            id: `att_${crypto.randomUUID()}`,
+            deliveryId: delivery.id,
+            attemptNum,
+            statusCode,
+            responseBody,
+            durationMs,
+        },
+    });
 
-    // 6. Update event status: delivered or failed
-    console.log(`[deliveryWorker] event ${event.id} -> ${ok ? 'delivered' : 'failed'}`);
+    if (ok) {
+        await prisma.delivery.update({
+            where: { id: delivery.id },
+            data: { status: 'delivered', attemptCount: attemptNum, nextAttemptAt: null },
+        });
+        console.log(`[deliveryWorker] delivery ${delivery.id} -> delivered (status ${statusCode})`);
+        return;
+    }
+
+    const delayMs = getDelayMs(attemptNum);
+    if (attemptNum >= MAX_ATTEMPTS || delayMs === null) {
+        await prisma.delivery.update({
+            where: { id: delivery.id },
+            data: { status: 'failed_permanent', attemptCount: attemptNum, nextAttemptAt: null },
+        });
+        console.log(`[deliveryWorker] delivery ${delivery.id} -> failed_permanent after ${attemptNum} attempts`);
+        return;
+    }
+
+    await prisma.delivery.update({
+        where: { id: delivery.id },
+        data: {
+            status: 'pending',
+            attemptCount: attemptNum,
+            nextAttemptAt: new Date(Date.now() + delayMs),
+        },
+    });
+    console.log(`[deliveryWorker] delivery ${delivery.id} -> retry in ${delayMs}ms (attempt ${attemptNum})`);
 }
 
 start();
