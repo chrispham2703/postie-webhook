@@ -37,10 +37,20 @@ describe('/api/endpoints (integration, needs docker compose up + seed)', () => {
         createdId = res.body.data.id;
     });
 
-    test('lists it back for the owning org', async () => {
+    test('lists it back for the owning org, without the secret', async () => {
         const res = await request(buildApp()).get('/api/endpoints').set('Authorization', `Bearer ${VALID_KEY}`);
         expect(res.status).toBe(200);
-        expect(res.body.data.some((e) => e.id === createdId)).toBe(true);
+        const found = res.body.data.find((e) => e.id === createdId);
+        expect(found).toBeDefined();
+        expect(found.secret).toBeUndefined();
+    });
+
+    test('GET by id also omits the secret', async () => {
+        const res = await request(buildApp())
+            .get(`/api/endpoints/${createdId}`)
+            .set('Authorization', `Bearer ${VALID_KEY}`);
+        expect(res.status).toBe(200);
+        expect(res.body.data.secret).toBeUndefined();
     });
 
     test('PATCH can disable it without deleting it', async () => {
