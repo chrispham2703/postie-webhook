@@ -8,4 +8,11 @@ async function findOwnedApplication(appId, orgId) {
     return prisma.application.findFirst({ where: { id: appId, orgId } });
 }
 
-module.exports = { findOwnedApplication };
+async function findOrgOwnerEmail(appId) {
+    const app = await prisma.application.findUnique({
+        where: { id: appId },
+    include: { org: { include: { users: { where: { role: 'owner' } } } } },
+});
+    return app?.org?.users?.[0]?.email ?? null;
+}
+module.exports = { findOwnedApplication, findOrgOwnerEmail };
