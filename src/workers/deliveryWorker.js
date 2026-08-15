@@ -5,6 +5,8 @@ const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 const { sign } = require('../utils/signature');
 const { getDelayMs, MAX_ATTEMPTS } = require('../utils/backoff');
+const { sendEndpointFailureAlert } = require('../utils/email');
+const { findOrgOwnerEmail } = require('../services/applicationService');
 
 const prisma = new PrismaClient();
 const QUEUE_NAME = 'event.deliver';
@@ -34,7 +36,7 @@ async function start() {
 async function handleDelivery(deliveryId) {
     const delivery = await prisma.delivery.findUnique({
         where: { id: deliveryId },
-        include: { event: true, endpoint: true },
+        include: { event: true, endpoint: { include: { app: true } } },
     });
     if (!delivery) {
         console.warn(`[deliveryWorker] delivery ${deliveryId} not found`);
@@ -97,6 +99,15 @@ async function handleDelivery(deliveryId) {
             data: { status: 'failed_permanent', attemptCount: attemptNum, nextAttemptAt: null },
         });
         console.log(`[deliveryWorker] delivery ${delivery.id} -> failed_permanent after ${attemptNum} attempts`);
+        const ownerEmail = await findOrgOwnerEmail(endpoint.appId);
+        if (ownerEmail) {
+            const { error } = await sendEndpointFailureAlert({ to: ownerEmail, appName: endpoint.app.name, endpointUrl: endpoint.url });
+            if (error) {
+                console.error(`[deliveryWorker] failed to send alert email to ${ownerEmail}:`, error.message);
+            } else {
+                console.log(`[deliveryWorker] alert email sent to ${ownerEmail}`);
+            }
+        }
         return;
     }
 
