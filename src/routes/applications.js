@@ -3,6 +3,8 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
 const applicationStore = require('../store/applicationStore.js');
+const endpointStore = require('../store/endpointStore.js');
+const { findOwnedApplication } = require('../services/applicationService.js');
 const { apiKeyAuth } = require('../middleware/apiKeyAuth.js');
 
 router.use(apiKeyAuth);
@@ -51,6 +53,18 @@ router.get('/:id', async (req, res) => {
         });
     }
     res.status(200).json({ data: app });
+});
+
+router.get('/:id/endpoints', async (req, res) => {
+    const app = await findOwnedApplication(req.params.id, req.orgId);
+    if (!app) {
+        return res.status(404).json({
+            error: { code: 'APPLICATION_NOT_FOUND', message: 'Application does not exist for this API key' },
+        });
+    }
+
+    const endpoints = await endpointStore.findAllForApp(app.id);
+    res.status(200).json({ data: endpoints });
 });
 
 module.exports = router;

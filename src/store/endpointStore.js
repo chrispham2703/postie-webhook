@@ -45,8 +45,14 @@ async function findByIdForOrg(id, orgId) {
     return prisma.endpoint.findFirst({ where: { id, app: { orgId } }, select: PUBLIC_FIELDS });
 }
 
+// Caller must have already verified the app belongs to the org (e.g. via
+// applicationService.findOwnedApplication) before calling this.
+async function findAllForApp(appId) {
+    return prisma.endpoint.findMany({ where: { appId }, select: PUBLIC_FIELDS });
+}
+
 async function update(id, data) {
     return prisma.endpoint.update({ where: { id }, data, select: PUBLIC_FIELDS });
 }
 
-module.exports = { create, findAllForOrg, findByIdForOrg, update };
+module.exports = { create, findAllForOrg, findByIdForOrg, findAllForApp, update };

@@ -63,6 +63,31 @@ describe('/api/applications (integration, needs docker compose up)', () => {
         expect(res.body.data.some((a) => a.id === createdId)).toBe(true);
     });
 
+    test('lists endpoints for the application', async () => {
+        const endpoint = await prisma.endpoint.create({
+            data: {
+                id: `ep_${crypto.randomUUID()}`,
+                appId: createdId,
+                url: 'https://httpbin.org/post',
+                secret: `whsec_${crypto.randomUUID()}`,
+            },
+        });
+
+        const res = await request(buildApp())
+            .get(`/api/applications/${createdId}/endpoints`)
+            .set('Authorization', `Bearer ${rawKey}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.some((e) => e.id === endpoint.id)).toBe(true);
+    });
+
+    test('404s for an application id that does not exist', async () => {
+        const res = await request(buildApp())
+            .get('/api/applications/app_does_not_exist/endpoints')
+            .set('Authorization', `Bearer ${rawKey}`);
+        expect(res.status).toBe(404);
+    });
+
     test('a different org cannot see it', async () => {
         const otherKey = `other_${crypto.randomUUID()}`;
         const otherOrgId = `org_apptest_other_${crypto.randomUUID()}`;

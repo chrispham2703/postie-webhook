@@ -29,12 +29,13 @@ No isolated test DB — tests need the seed data above (`org_test_1`).
 ## Structure
 
 `routes/` (HTTP + validation) → `services/` (cross-entity logic) → `store/` (single-model Prisma
-queries). Simple CRUD: route → store. Logic spanning models: route → service — e.g. reuse
-`applicationService.findOwnedApplication(appId, orgId)` for any route that checks app ownership before
-touching a related model; don't re-derive that check with stores directly. 4 processes, deployed
-separately: `app.js` (API), `deliveryWorker.js`, `retryPoller.js`, `recoveryScan.js`.
+queries). Simple CRUD: route → store. 4 processes, deployed separately: `app.js` (API),
+`deliveryWorker.js`, `retryPoller.js`, `recoveryScan.js`.
 
 ## Landmines
+
+- Never check app ownership with stores directly in a route. Always call
+  `applicationService.findOwnedApplication(appId, orgId)` before touching a related model.
 
 - Auth: `apiKeyAuth` (raw key) guards `/api/events`, `/api/endpoints`. `userAuth` (JWT) guards
   `/api/auth`, `/api/applications`, `/api/api-keys`. Never swap them.
