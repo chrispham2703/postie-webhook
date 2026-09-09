@@ -66,3 +66,34 @@ Kept this code — it's correct and tested, not a throwaway experiment.
 `AI_WORKFLOW.md` temporarily removed to see if it fails again). Don't treat this as
 "the landmine wording fix worked" without that isolation — one pass after three
 identical failures is weak evidence on its own.
+
+## Entry 4 — Dashboard design pointed at the wrong auth mechanism
+
+**What it got wrong:** My first draft of `docs/FRONTEND_DESIGN.md` picked
+`GET /api/events` as the event list page's data source, without checking which auth
+guard protects it. That route sits behind `apiKeyAuth` — the org's shared, permanent
+API key, meant for server-to-server traffic (other companies' backends sending Postie
+events). A browser-based dashboard would have had to hold that key client-side to call
+it, which means anyone opening dev tools could read it.
+
+**How I caught it:** I was dry-run testing whether the new `code-reviewer` subagent
+actually worked (Task 9), so I had it review the new files I'd just created — the two
+skill files, the two subagent files, and the design doc. It pointed out that
+`react-page/SKILL.md` told the agent to call an endpoint that needs the shared API key,
+but never said the dashboard should use a login instead. It flagged this as a real risk:
+putting that API key inside browser-facing code means anyone could open dev tools and
+steal it. This matched a rule already written in `CLAUDE.md` — the API key and the
+personal-login system protect different things and should never get mixed up on the same
+route. My design had walked straight into the mistake that rule exists to prevent.
+
+**Root cause:** The design doc was built entirely around *what data* the page needed
+(fields, columns, loading/error states) and never considered *who* — a person vs. a
+machine — should be allowed to call the endpoint. Access control wasn't part of the
+design checklist at all until the subagent's review forced the question.
+
+**What I changed:** Redesigned the event list page around a new endpoint,
+`GET /api/applications/:id/events`, protected by `userAuth` — the same personal-login
+system already used by the existing `GET /api/applications/:id/endpoints` route. A leaked
+login session only affects one user and expires; it never touches the shared API key real
+integrations depend on. Documented both the decision and the reasoning directly in
+`docs/FRONTEND_DESIGN.md` so the endpoint gets built against the right pattern.
