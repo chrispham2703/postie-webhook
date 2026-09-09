@@ -34,6 +34,13 @@ queries). Simple CRUD: route → store. Logic spanning models: route → service
 touching a related model; don't re-derive that check with stores directly. 4 processes, deployed
 separately: `app.js` (API), `deliveryWorker.js`, `retryPoller.js`, `recoveryScan.js`.
 
+## Workflow
+
+Start a new branch per logical unit of work. Don't stack unrelated features onto an
+existing branch just because it's the one currently checked out — check `git branch
+--show-current` before starting something new, and cut a fresh branch from `main` if
+the current one already belongs to a different feature.
+
 ## Landmines
 
 - Auth: `apiKeyAuth` (raw key) guards `/api/events`, `/api/endpoints`. `userAuth` (JWT) guards
