@@ -92,8 +92,11 @@ machine — should be allowed to call the endpoint. Access control wasn't part o
 design checklist at all until the subagent's review forced the question.
 
 **What I changed:** Redesigned the event list page around a new endpoint,
-`GET /api/applications/:id/events`, protected by `userAuth` — the same personal-login
-system already used by the existing `GET /api/applications/:id/endpoints` route. A leaked
-login session only affects one user and expires; it never touches the shared API key real
-integrations depend on. Documented both the decision and the reasoning directly in
-`docs/FRONTEND_DESIGN.md` so the endpoint gets built against the right pattern.
+`GET /api/dashboard/events`, protected by `userAuth`. First draft of this fix wrongly
+assumed `/api/applications` was already `userAuth`-protected (trusting `CLAUDE.md`'s
+claim without checking) — verifying the actual code showed it's `apiKeyAuth`, same as
+everything else in that file, and `CLAUDE.md` was wrong. The one real working `userAuth`
+example is `apiKeys.js`, so the new route follows that file's structure instead, in its
+own file, kept separate so the two auth guards never mix in one router. Fixed the wrong
+claim in `CLAUDE.md` too. A leaked login session only affects one user and expires; it
+never touches the shared API key real integrations depend on.

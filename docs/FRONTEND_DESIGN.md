@@ -6,7 +6,7 @@ pages are deferred to a later week.
 
 ## Event List page
 
-**Endpoint:** `GET /api/applications/:id/events` (**new** — does not exist yet)
+**Endpoint:** `GET /api/dashboard/events` (**new** — does not exist yet, new file)
 
 **Why a new endpoint, not the existing `GET /api/events`:** `GET /api/events` is
 protected by `apiKeyAuth` (the org's shared, permanent API key) — meant for
@@ -14,19 +14,21 @@ server-to-server traffic, e.g. another company's backend sending Postie events.
 A browser dashboard is used by a logged-in *person*, not a machine, so it must
 never hold that key (leaking it would expose a permanent, org-wide credential).
 
-Instead, this new endpoint is protected by `userAuth` (the same personal-login,
-JWT-based system that already guards `GET /api/applications/:id/endpoints`) — a
-leaked login session only affects that one user, expires, and doesn't touch the
-API key other real integrations depend on.
+Instead, this new endpoint is protected by `userAuth`. **Verified correction:**
+`/api/applications` is actually `apiKeyAuth`-protected too (`CLAUDE.md` previously
+said otherwise — fixed). The one real, working `userAuth` example in this codebase
+is `src/routes/apiKeys.js`; this new route follows that file's structure, not
+`applications.js`.
 
-**Implementation, following the existing `:id/endpoints` route as the pattern:**
-1. Route in `src/routes/applications.js`, under `userAuth` (already applied to
-   this router).
-2. Ownership check via `applicationService.findOwnedApplication(appId, orgId)` —
-   per `CLAUDE.md`'s landmine, never query the store directly for this check.
-3. Fetch events for that application, including delivery + endpoint data in the
-   same query (`include: { deliveries: { include: { endpoint: true } } }`) so the
-   frontend doesn't need a second call per row.
+**Implementation, following `apiKeys.js`'s structure:**
+1. New file `src/routes/dashboardEvents.js`, mounted at `/api/dashboard/events` in
+   `app.js` — kept separate from `/api/applications` so `apiKeyAuth` and `userAuth`
+   never mix within one router file (per `CLAUDE.md`'s landmine).
+2. `router.use(userAuth)` at the top of the file, same as `apiKeys.js`.
+3. `GET /` fetches all events for `req.orgId` (from the JWT, set by `userAuth`),
+   including delivery + endpoint data in the same query (`include: { deliveries: {
+   include: { endpoint: true } } }`) so the frontend doesn't need a second call per
+   row.
 4. Same paginated shape as `GET /api/events`: `{ data: [...events], meta: {
    nextCursor, hasMore } }`.
 
