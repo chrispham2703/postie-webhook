@@ -7,6 +7,7 @@ const { createDeliveries } = require('../services/deliveryService.js');
 const { findOwnedApplication } = require('../services/applicationService.js');
 const { publish } = require('../config/rabbitmq.js');
 const { apiKeyAuth } = require('../middleware/apiKeyAuth.js');
+const { parsePagination, buildPageResponse } = require('../utils/pagination.js');
 
 router.use(apiKeyAuth);
 
@@ -68,23 +69,11 @@ router.post(
 
 // 2. GET /api/events
 router.get('/', async (req, res) => {
-    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
-    const cursor = req.query.cursor;
+    const { limit, cursor } = parsePagination(req.query);
 
     const events = await findAll({ cursor, limit, orgId: req.orgId });
 
-
-
-    const hasMore = events.length > limit;
-    const page = hasMore ? events.slice(0, limit) : events;
-
-    res.status(200).json({
-        data: page,
-        meta: {
-            nextCursor: hasMore ? page[page.length - 1].id : null,
-            hasMore,
-        },
-    });
+    res.status(200).json(buildPageResponse(events, limit));
 });
 
 // 3. GET /api/events/:id
