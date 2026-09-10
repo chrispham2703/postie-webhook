@@ -43,8 +43,12 @@ the current one already belongs to a different feature.
 
 ## Landmines
 
-- Auth: `apiKeyAuth` (raw key) guards `/api/events`, `/api/endpoints`. `userAuth` (JWT) guards
-  `/api/auth`, `/api/applications`, `/api/api-keys`. Never swap them.
+- Auth: `apiKeyAuth` (raw key) guards `/api/events`, `/api/endpoints`, **and `/api/applications`**
+  (verified in `src/routes/applications.js` — this file previously said `userAuth` guarded
+  `/api/applications`; it doesn't yet). `userAuth` (JWT) guards `/api/api-keys` only so far
+  (`src/routes/apiKeys.js` is the one real example to copy). `/api/auth` (signup/login) has
+  no guard, by design — there's no token yet at that point. Never mix `apiKeyAuth` and
+  `userAuth` within the same router file.
 - Scope every id lookup by `orgId`. Cross-org resource → 404, never 403 (403 leaks existence).
 - `createDeliveries()` upserts on `[eventId, endpointId]`. Never change to `create` — recovery scan
   re-runs it for the same event.
