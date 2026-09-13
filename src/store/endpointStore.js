@@ -49,4 +49,4 @@ async function update(id, data) {
     return prisma.endpoint.update({ where: { id }, data, select: PUBLIC_FIELDS });
 }
 
-module.exports = { create, findAllForOrg, findByIdForOrg, update };
+module.exports = { create, findAllForOrg, findByIdForOrg, update, PUBLIC_FIELDS };
