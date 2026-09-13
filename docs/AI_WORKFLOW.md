@@ -100,3 +100,24 @@ example is `apiKeys.js`, so the new route follows that file's structure instead,
 own file, kept separate so the two auth guards never mix in one router. Fixed the wrong
 claim in `CLAUDE.md` too. A leaked login session only affects one user and expires; it
 never touches the shared API key real integrations depend on.
+
+## MCP — Postgres server, local dev only
+
+Added a Postgres MCP server (`@modelcontextprotocol/server-postgres`) pointed at the
+local dev database only, per the security rule (never production, never a database
+with real user data).
+
+**What it made easier:** asked it "what columns does the events table actually have
+in the live database?" and got a real, accurate answer straight from Postgres —
+including correctly noting there's no `orgId` column directly on `Event`, and that org
+scoping must go through `appId` → `Application` instead. That's the exact same fact I
+spent time confirming by hand earlier tonight, reading `eventStore.js`'s
+`where: { app: { orgId } }` — the MCP server got there in one query instead of me
+reading source files to piece it together.
+
+**What it didn't help with:** it can only describe the schema — it doesn't know
+*why* a table looks the way it does, or which conventions apply (e.g., it wouldn't know
+about `PUBLIC_FIELDS` or the `apiKeyAuth`/`userAuth` split on its own; those live in
+code comments and `CLAUDE.md`, not the database). It's a shortcut for "what does the
+data actually look like right now," not a replacement for reading the code to
+understand behavior.
