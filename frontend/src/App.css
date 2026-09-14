@@ -104,10 +104,33 @@
   text-align: left;
 }
 
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
 .dashboard-page h1 {
   font-size: 26px;
   letter-spacing: normal;
-  margin: 0 0 20px;
+  margin: 0;
+}
+
+.btn-secondary {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--social-bg);
 }
 
 .dashboard-status {
