@@ -59,39 +59,54 @@ function EventList() {
   }, []);
 
   if (loading) {
-    return <p>Loading events...</p>;
+    return (
+      <div className="dashboard-page">
+        <h1>Events</h1>
+        <p className="dashboard-status">Loading events...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <p>Couldn't load events — try again</p>;
+    return (
+      <div className="dashboard-page">
+        <h1>Events</h1>
+        <p className="dashboard-status">Couldn't load events — try again</p>
+      </div>
+    );
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Event type</th>
-          <th>Target URL</th>
-          <th>Status</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody>
-        {events.map((event) => {
-          const delivery = event.deliveries?.[0];
-          return (
-            <tr key={event.id}>
-              <td>{event.eventType}</td>
-              <td>{delivery?.endpoint?.url ?? '—'}</td>
-              <td>
-                <StatusBadge status={delivery?.status} />
-              </td>
-              <td>{new Date(event.createdAt).toLocaleString()}</td>
+    <div className="dashboard-page">
+      <h1>Events</h1>
+      <div className="event-table-wrap">
+        <table className="event-table">
+          <thead>
+            <tr>
+              <th>Event type</th>
+              <th>Target URL</th>
+              <th>Status</th>
+              <th>Created</th>
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {events.map((event) => {
+              const delivery = event.deliveries?.[0];
+              return (
+                <tr key={event.id}>
+                  <td>{event.eventType}</td>
+                  <td>{delivery?.endpoint?.url ?? '—'}</td>
+                  <td>
+                    <StatusBadge status={delivery?.status} />
+                  </td>
+                  <td>{new Date(event.createdAt).toLocaleString()}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

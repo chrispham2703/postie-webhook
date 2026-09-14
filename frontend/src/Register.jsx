@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import api from './api';
 
-function Login({ onLogin, onToggle }) {
+function Register({ onRegister, onToggle }) {
+  const [orgName, setOrgName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -12,10 +13,17 @@ function Login({ onLogin, onToggle }) {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/api/auth/login', { email, password });
-      onLogin(res.data.data.token);
+      const res = await api.post('/api/auth/signup', { orgName, email, password });
+      onRegister(res.data.data.token);
     } catch (err) {
-      setError('Login failed — check your email and password.');
+      const code = err.response?.data?.error?.code;
+      if (code === 'EMAIL_TAKEN') {
+        setError('An account with this email already exists.');
+      } else if (code === 'VALIDATION_FAILED') {
+        setError('Check your organization name, email, and password (8+ characters) and try again.');
+      } else {
+        setError('Registration failed — check your details and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -24,8 +32,15 @@ function Login({ onLogin, onToggle }) {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>Postie Dashboard</h1>
+        <h1>Create your account</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Organization name"
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            required
+          />
           <input
             type="email"
             placeholder="Email"
@@ -39,9 +54,10 @@ function Login({ onLogin, onToggle }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={8}
           />
           <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Log in'}
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
           {error && (
             <p role="alert" className="form-error">
@@ -50,9 +66,9 @@ function Login({ onLogin, onToggle }) {
           )}
         </form>
         <p className="auth-toggle">
-          Don't have an account?{' '}
+          Already have an account?{' '}
           <button type="button" onClick={onToggle}>
-            Register
+            Log in
           </button>
         </p>
       </div>
@@ -60,4 +76,4 @@ function Login({ onLogin, onToggle }) {
   );
 }
 
-export default Login;
+export default Register;
