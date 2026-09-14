@@ -19,6 +19,13 @@ function App() {
     setTokenState(newToken);
   }
 
+  function handleLogout() {
+    localStorage.removeItem('postie_token');
+    setToken(null);
+    setTokenState(null);
+    setView('login');
+  }
+
   if (!token) {
     return view === 'login' ? (
       <Login onLogin={handleAuth} onToggle={() => setView('register')} />
@@ -27,7 +34,7 @@ function App() {
     );
   }
 
-  return <EventList />;
+  return <EventList onLogout={handleLogout} />;
 }
 
 export default App;

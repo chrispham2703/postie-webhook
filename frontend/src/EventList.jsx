@@ -25,7 +25,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function EventList() {
+function EventList({ onLogout }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +61,12 @@ function EventList() {
   if (loading) {
     return (
       <div className="dashboard-page">
-        <h1>Events</h1>
+        <div className="dashboard-header">
+          <h1>Events</h1>
+          <button className="btn-secondary" onClick={onLogout}>
+            Log out
+          </button>
+        </div>
         <p className="dashboard-status">Loading events...</p>
       </div>
     );
@@ -70,7 +75,12 @@ function EventList() {
   if (error) {
     return (
       <div className="dashboard-page">
-        <h1>Events</h1>
+        <div className="dashboard-header">
+          <h1>Events</h1>
+          <button className="btn-secondary" onClick={onLogout}>
+            Log out
+          </button>
+        </div>
         <p className="dashboard-status">Couldn't load events — try again</p>
       </div>
     );
@@ -78,7 +88,12 @@ function EventList() {
 
   return (
     <div className="dashboard-page">
-      <h1>Events</h1>
+      <div className="dashboard-header">
+        <h1>Events</h1>
+        <button className="btn-secondary" onClick={onLogout}>
+          Log out
+        </button>
+      </div>
       <div className="event-table-wrap">
         <table className="event-table">
           <thead>
