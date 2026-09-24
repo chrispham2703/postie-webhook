@@ -107,6 +107,40 @@ Added a Postgres MCP server (`@modelcontextprotocol/server-postgres`) pointed at
 local dev database only, per the security rule (never production, never a database
 with real user data).
 
+## Entry 5 — RabbitMQ connection never reconnects after dropping
+
+**What happened:** While testing the live Railway deployment through Postman, an event
+got stuck with `status: 'queue_failed'`. The `recoveryScan` service is supposed to
+auto-heal exactly this case (per its own comment, referencing `docs/ARCHITECTURE.md`
+§16), but its logs showed the same error on every 60s cycle for well over an hour:
+`[recoveryScan] failed to recover event ...: Channel closed`.
+
+**Root cause, found by reading `src/config/rabbitmq.js`:** `connect()` runs exactly
+once, when the process starts, and stores the connection/channel in module-level
+variables. If that connection ever drops after startup — most likely CloudAMQP's free
+tier closing an idle connection, since `recoveryScan` mostly sits idle between finding
+stuck events — nothing detects the drop or reconnects. Every later call to `publish()`
+tries to use a channel that no longer exists, and fails forever, until the process is
+manually restarted. This isn't specific to `recoveryScan` — `retryPoller.js` and
+`app.js` share the same `connect()`/`publish()` pair and have the identical gap;
+`deliveryWorker.js` opens its own separate connection inline and wasn't checked.
+
+**How I caught it:** Not an agent mistake this time — live testing against the real
+Railway deployment surfaced it. Checked `GET /api/endpoints` first to rule out a bad
+endpoint URL (both endpoints were `active`, `failureCount: 0`), which pointed the
+problem back at the queue layer instead.
+
+**What I did:** Manually restarted the `recoveryScan` service in Railway, which forces
+`connect()` to run again and get a fresh channel — confirmed working via the logs
+(`[recoveryScan] recovered event ..., requeued 1 delivery(ies)`). This is a workaround,
+not a fix.
+
+**Not yet done:** The actual fix — listening for the connection's `close`/`error`
+events and reconnecting automatically instead of connecting once and trusting it stays
+up — hasn't been implemented. Right now, any dropped connection on any of the 4
+processes requires a manual restart to recover. Worth prioritizing before this handles
+real customer traffic, since a silent, permanent stall is worse than a visible crash.
+
 **What it made easier:** asked it "what columns does the events table actually have
 in the live database?" and got a real, accurate answer straight from Postgres —
 including correctly noting there's no `orgId` column directly on `Event`, and that org
