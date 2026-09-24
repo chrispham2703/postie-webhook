@@ -141,6 +141,17 @@ up — hasn't been implemented. Right now, any dropped connection on any of the 
 processes requires a manual restart to recover. Worth prioritizing before this handles
 real customer traffic, since a silent, permanent stall is worse than a visible crash.
 
+**Update — confirmed the same bug hit `deliveryWorker` independently:** hours later, a
+different event sat stuck at `pending` with no error visible anywhere, and only cleared
+after manually redeploying the `postie-worker` service. Checked `deliveryWorker.js`
+directly: it does **not** import `connect`/`publish` from `config/rabbitmq.js` — it
+opens its own separate `amqplib.connect(...)` inline, with the identical "connect once,
+never reconnect" flaw, just duplicated in a second place instead of shared. This means
+a fix to `config/rabbitmq.js` alone would not have protected `deliveryWorker` — it
+would need the exact same reconnect logic written a second time, or `deliveryWorker`
+refactored to use the shared module instead of its own inline copy. Confirms this is a
+systemic gap across all 4 processes, not a one-off in a single file.
+
 **What it made easier:** asked it "what columns does the events table actually have
 in the live database?" and got a real, accurate answer straight from Postgres —
 including correctly noting there's no `orgId` column directly on `Event`, and that org
