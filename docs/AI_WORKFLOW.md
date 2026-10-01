@@ -107,6 +107,21 @@ Added a Postgres MCP server (`@modelcontextprotocol/server-postgres`) pointed at
 local dev database only, per the security rule (never production, never a database
 with real user data).
 
+**What it made easier:** asked it "what columns does the events table actually have
+in the live database?" and got a real, accurate answer straight from Postgres —
+including correctly noting there's no `orgId` column directly on `Event`, and that org
+scoping must go through `appId` → `Application` instead. That's the exact same fact I
+spent time confirming by hand earlier tonight, reading `eventStore.js`'s
+`where: { app: { orgId } }` — the MCP server got there in one query instead of me
+reading source files to piece it together.
+
+**What it didn't help with:** it can only describe the schema — it doesn't know
+*why* a table looks the way it does, or which conventions apply (e.g., it wouldn't know
+about `PUBLIC_FIELDS` or the `apiKeyAuth`/`userAuth` split on its own; those live in
+code comments and `CLAUDE.md`, not the database). It's a shortcut for "what does the
+data actually look like right now," not a replacement for reading the code to
+understand behavior.
+
 ## Entry 5 — RabbitMQ connection never reconnects after dropping
 
 **What happened:** While testing the live Railway deployment through Postman, an event
@@ -135,11 +150,10 @@ problem back at the queue layer instead.
 (`[recoveryScan] recovered event ..., requeued 1 delivery(ies)`). This is a workaround,
 not a fix.
 
-**Not yet done:** The actual fix — listening for the connection's `close`/`error`
+**At this point:** the actual fix — listening for the connection's `close`/`error`
 events and reconnecting automatically instead of connecting once and trusting it stays
-up — hasn't been implemented. Right now, any dropped connection on any of the 4
-processes requires a manual restart to recover. Worth prioritizing before this handles
-real customer traffic, since a silent, permanent stall is worse than a visible crash.
+up — was not yet implemented. Any dropped connection on any of the 4 processes still
+required a manual restart to recover.
 
 **Update — confirmed the same bug hit `deliveryWorker` independently:** hours later, a
 different event sat stuck at `pending` with no error visible anywhere, and only cleared
@@ -152,17 +166,44 @@ would need the exact same reconnect logic written a second time, or `deliveryWor
 refactored to use the shared module instead of its own inline copy. Confirms this is a
 systemic gap across all 4 processes, not a one-off in a single file.
 
-**What it made easier:** asked it "what columns does the events table actually have
-in the live database?" and got a real, accurate answer straight from Postgres —
-including correctly noting there's no `orgId` column directly on `Event`, and that org
-scoping must go through `appId` → `Application` instead. That's the exact same fact I
-spent time confirming by hand earlier tonight, reading `eventStore.js`'s
-`where: { app: { orgId } }` — the MCP server got there in one query instead of me
-reading source files to piece it together.
+**The actual fix, written and tested:** added a `connection.on('close', ...)` listener
+in `config/rabbitmq.js` that calls a new `scheduleReconnect()` function — waits 3s via
+`setTimeout`, calls `connect()` again, and on failure calls itself again, so it keeps
+retrying indefinitely rather than giving up after one attempt (an earlier version that
+only called `connect()` once on failure was tested and confirmed insufficient — it
+worked when RabbitMQ was merely restarted quickly, but failed silently if the retry
+landed before RabbitMQ had fully come back up). Verified two ways: (1) restarting the
+local RabbitMQ container and watching it reconnect automatically, and (2) stopping it
+for longer and confirming it kept retrying — silently, since the first working version
+had no log inside the retry attempt itself — until RabbitMQ came back, then reconnected
+without any manual intervention. Added a log line inside the retry so future failures
+are visible instead of silent.
 
-**What it didn't help with:** it can only describe the schema — it doesn't know
-*why* a table looks the way it does, or which conventions apply (e.g., it wouldn't know
-about `PUBLIC_FIELDS` or the `apiKeyAuth`/`userAuth` split on its own; those live in
-code comments and `CLAUDE.md`, not the database). It's a shortcut for "what does the
-data actually look like right now," not a replacement for reading the code to
-understand behavior.
+**Still open:** `deliveryWorker.js`'s own separate inline connection was not updated
+with this same fix — it still has the original one-shot "connect once" gap. Same fix,
+applied to a second file, is the natural next step.
+
+## Week 6 vs Week 7 — plan-to-actual pace, not a measured feature-build time
+
+This isn't a literal "time to build one comparable feature" measurement — the
+repo's commit timestamps don't line up with the program's weekly calendar
+cleanly enough to pull that from `git log`, so this is self-reported pacing
+instead, from memory, not from commit data:
+
+- **Week 6:** planned as a 1-week sprint, finished in 1 week. Coach was happy
+  with the result.
+- **Week 7:** planned as a 1-week sprint, actually took about 2 weeks of real
+  work to land, and the coach was unhappy with the pace at the first check-in.
+  It took until the 3rd session for the coach to release Week 8.
+
+**What changed between the two:** Week 7 introduced React, which was
+genuinely new — the same "new concept = 3-4x the naive estimate" pattern
+showed up here at the whole-week level, not just inside a single task (the
+React tutorial alone ran 4.7x over its own estimate). Week 6 was retry/circuit
+breaker/HMAC — all extensions of patterns already in place by Week 5, so the
+estimate held.
+
+**The honest takeaway:** estimating a week that includes a genuinely new
+technology (a new framework, a new tool) needs the same multiplier correction
+already applied at the task level — the plan-vs-actual gap doesn't go away
+just because the unit is a whole week instead of a 90-minute task.
