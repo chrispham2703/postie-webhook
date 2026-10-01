@@ -182,28 +182,3 @@ are visible instead of silent.
 **Still open:** `deliveryWorker.js`'s own separate inline connection was not updated
 with this same fix — it still has the original one-shot "connect once" gap. Same fix,
 applied to a second file, is the natural next step.
-
-## Week 6 vs Week 7 — plan-to-actual pace, not a measured feature-build time
-
-This isn't a literal "time to build one comparable feature" measurement — the
-repo's commit timestamps don't line up with the program's weekly calendar
-cleanly enough to pull that from `git log`, so this is self-reported pacing
-instead, from memory, not from commit data:
-
-- **Week 6:** planned as a 1-week sprint, finished in 1 week. Coach was happy
-  with the result.
-- **Week 7:** planned as a 1-week sprint, actually took about 2 weeks of real
-  work to land, and the coach was unhappy with the pace at the first check-in.
-  It took until the 3rd session for the coach to release Week 8.
-
-**What changed between the two:** Week 7 introduced React, which was
-genuinely new — the same "new concept = 3-4x the naive estimate" pattern
-showed up here at the whole-week level, not just inside a single task (the
-React tutorial alone ran 4.7x over its own estimate). Week 6 was retry/circuit
-breaker/HMAC — all extensions of patterns already in place by Week 5, so the
-estimate held.
-
-**The honest takeaway:** estimating a week that includes a genuinely new
-technology (a new framework, a new tool) needs the same multiplier correction
-already applied at the task level — the plan-vs-actual gap doesn't go away
-just because the unit is a whole week instead of a 90-minute task.
