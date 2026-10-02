@@ -29,8 +29,21 @@ async function save(data) {
     });
 }
 
-async function findById(id, orgId) {
-    const event = await prisma.event.findFirst({ where: { id, app: { orgId } } });
+async function findById(id, orgId, { includeDeliveries = false } = {}) {
+    const event = await prisma.event.findFirst({
+        where: { id, app: { orgId } },
+        ...(includeDeliveries && {
+            include: {
+                deliveries: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        endpoint: { select: ENDPOINT_PUBLIC_FIELDS },
+                        attempts: { orderBy: { attemptNum: 'asc' } },
+                    },
+                },
+            },
+        }),
+    });
     return event ?? null;
 }
 async function updateStatus(id, status) {
