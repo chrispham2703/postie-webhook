@@ -112,6 +112,33 @@
   margin: 0 0 20px;
 }
 
+.dashboard-header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-filter {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
 .dashboard-page h1 {
   font-size: 26px;
   letter-spacing: normal;

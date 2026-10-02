@@ -7,10 +7,19 @@ const { parsePagination, buildPageResponse } = require('../utils/pagination.js')
 
 router.use(userAuth);
 
+const VALID_STATUSES = ['pending', 'delivered', 'failed_permanent'];
+
 router.get('/', async (req, res) => {
     const { limit, cursor } = parsePagination(req.query);
+    const { status } = req.query;
 
-    const events = await findAll({ cursor, limit, orgId: req.orgId, includeDeliveries: true });
+    if (status && !VALID_STATUSES.includes(status)) {
+        return res.status(422).json({
+            error: { code: 'INVALID_STATUS', message: `status must be one of: ${VALID_STATUSES.join(', ')}` },
+        });
+    }
+
+    const events = await findAll({ cursor, limit, orgId: req.orgId, includeDeliveries: true, deliveryStatus: status });
 
     res.status(200).json(buildPageResponse(events, limit));
 });

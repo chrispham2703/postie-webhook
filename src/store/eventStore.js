@@ -3,9 +3,12 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { PUBLIC_FIELDS: ENDPOINT_PUBLIC_FIELDS } = require('./endpointStore.js');
 
-async function findAll({ cursor, limit, orgId, includeDeliveries = false }) {
+async function findAll({ cursor, limit, orgId, includeDeliveries = false, deliveryStatus }) {
     return await prisma.event.findMany({
-        where: { app: { orgId } },
+        where: {
+            app: { orgId },
+            ...(deliveryStatus && { deliveries: { some: { status: deliveryStatus } } }),
+        },
         take: limit + 1,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
