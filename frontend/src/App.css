@@ -172,3 +172,43 @@
 .event-table tbody tr:hover {
   background: var(--social-bg);
 }
+
+.event-row {
+  cursor: pointer;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.payload-block {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.attempt-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.attempt-timeline li {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.attempt-timeline li:last-child {
+  border-bottom: none;
+}

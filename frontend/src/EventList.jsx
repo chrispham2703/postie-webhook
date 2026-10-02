@@ -8,7 +8,7 @@ const STATUS_COLORS = {
   dead_letter: '#757575', // grey
 };
 
-function StatusBadge({ status }) {
+export function StatusBadge({ status }) {
   const color = STATUS_COLORS[status] || STATUS_COLORS.pending;
   return (
     <span
@@ -25,7 +25,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function EventList({ onLogout }) {
+function EventList({ onLogout, onSelectEvent }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -108,7 +108,7 @@ function EventList({ onLogout }) {
             {events.map((event) => {
               const delivery = event.deliveries?.[0];
               return (
-                <tr key={event.id}>
+                <tr key={event.id} className="event-row" onClick={() => onSelectEvent(event.id)}>
                   <td>{event.eventType}</td>
                   <td>{delivery?.endpoint?.url ?? '—'}</td>
                   <td>
