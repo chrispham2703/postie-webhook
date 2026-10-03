@@ -141,4 +141,8 @@ async function handleDelivery(deliveryId) {
     console.log(`[deliveryWorker] delivery ${delivery.id} -> retry in ${delayMs}ms (attempt ${attemptNum})`);
 }
 
-start();
+module.exports = { handleDelivery };
+
+if (require.main === module) {
+    start();
+}

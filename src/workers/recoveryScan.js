@@ -57,4 +57,8 @@ async function start() {
     setInterval(tick, SCAN_INTERVAL_MS);
 }
 
-start();
+module.exports = { scanOnce };
+
+if (require.main === module) {
+    start();
+}
