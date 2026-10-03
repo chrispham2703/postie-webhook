@@ -62,8 +62,8 @@ async function handleDelivery(deliveryId) {
 
     const signature = sign(event.payload, endpoint.secret);
 
-    let statusCode = 0;
-    let responseBody = '';
+    let statusCode;
+    let responseBody;
     const startedAt = Date.now();
 
     try {

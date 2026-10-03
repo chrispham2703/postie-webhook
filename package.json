@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "lint": "eslint src tests",
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
     "start:worker": "node src/workers/deliveryWorker.js",
@@ -38,6 +39,9 @@
     "resend": "^6.20.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"

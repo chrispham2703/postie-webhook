@@ -11,7 +11,6 @@ const prisma = new PrismaClient();
 describe('deliveryWorker retry / exhausted behavior (integration, needs docker compose up)', () => {
     let org;
     let app;
-    const createdIds = [];
 
     beforeAll(async () => {
         org = await prisma.organization.create({

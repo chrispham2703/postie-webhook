@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: postie_test
+          POSTGRES_USER: postie
+          POSTGRES_PASSWORD: postie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postie -d postie_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: postie
+          RABBITMQ_DEFAULT_PASS: postie
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Service containers are reachable via localhost on a GitHub-hosted
+    # runner (unlike docker-compose's internal network, which uses service
+    # names) -- no .env.test file exists in a fresh checkout (it's
+    # gitignored), so these are set directly instead of loaded from a file.
+    env:
+      DATABASE_URL: postgresql://postie:postie@localhost:5432/postie_test
+      RABBITMQ_URL: amqp://postie:postie@localhost:5672
+      JWT_SECRET: ci_test_jwt_secret
+      RESEND_API_KEY: ci_dummy_key_not_a_real_resend_key
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma migrate deploy
+
+      - run: node prisma/seed.js
+
+      - run: npm run lint
+
+      - run: npm test
