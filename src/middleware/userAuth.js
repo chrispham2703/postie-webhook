@@ -18,7 +18,7 @@ function userAuth(req, res, next) {
         req.orgId = payload.orgId;
         req.role = payload.role;
         next();
-    } catch (err) {
+    } catch {
         return res.status(401).json({
             error: { code: 'UNAUTHORIZED', message: 'Invalid or expired session token' },
         });

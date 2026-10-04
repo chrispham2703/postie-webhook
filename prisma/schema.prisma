@@ -128,6 +128,8 @@ model Endpoint {
   disabled     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  failureSince DateTime?
+  pausedUntil  DateTime?
 
   app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
   deliveries Delivery[]

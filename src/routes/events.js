@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
+
+// 100 requests/minute per IP -- generous enough for real webhook traffic,
+// tight enough to stop a public, unauthenticated-at-the-network-level demo
+// endpoint from being spammed or run up in cost.
+const createEventLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 100,
+});
 
 const { save, findAll, findById, updateStatus } = require('../store/eventStore.js');
 const { createDeliveries } = require('../services/deliveryService.js');
@@ -14,6 +23,7 @@ router.use(apiKeyAuth);
 // 1. POST /api/events
 router.post(
     '/',
+    createEventLimiter,
     [
         body('appId')
             .trim()

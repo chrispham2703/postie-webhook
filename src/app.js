@@ -16,9 +16,10 @@ const errorHandler = require('./middleware/errorHandler');
 const { connect } = require('./config/rabbitmq');
 
 const app = express();
+const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 app.use(morgan('combined'));
-app.use(cors());
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 app.use('/health', healthRouter);
 app.use('/api/events', eventRouter);
@@ -31,12 +32,10 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-
 async function start() {
     await connect();
     app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
     });
 }
-
 start();

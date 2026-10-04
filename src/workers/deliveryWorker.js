@@ -7,6 +7,7 @@ const { sign } = require('../utils/signature');
 const { getDelayMs, MAX_ATTEMPTS } = require('../utils/backoff');
 const { sendEndpointFailureAlert } = require('../utils/email');
 const { findOrgOwnerEmail } = require('../services/applicationService');
+const { canCallEndpoint, recordFailure, recordSuccess } = require('../services/circuitBreakerService');
 
 const prisma = new PrismaClient();
 const QUEUE_NAME = 'event.deliver';
@@ -44,10 +45,25 @@ async function handleDelivery(deliveryId) {
     }
 
     const { event, endpoint } = delivery;
+
+    const decision = await canCallEndpoint(endpoint.id, new Date());
+    if (!decision.allowed) {
+        // Circuit open — don't call a broken endpoint, don't burn an attempt.
+        // Re-fetch the endpoint since canCallEndpoint may have just claimed
+        // the probe slot (pushing pausedUntil forward) in a concurrent call.
+        const fresh = await prisma.endpoint.findUnique({ where: { id: endpoint.id } });
+        await prisma.delivery.update({
+            where: { id: delivery.id },
+            data: { nextAttemptAt: fresh.pausedUntil },
+        });
+        console.log(`[deliveryWorker] delivery ${delivery.id} -> circuit open for endpoint ${endpoint.id}, skipping until ${fresh.pausedUntil.toISOString()}`);
+        return;
+    }
+
     const signature = sign(event.payload, endpoint.secret);
 
-    let statusCode = 0;
-    let responseBody = '';
+    let statusCode;
+    let responseBody;
     const startedAt = Date.now();
 
     try {
@@ -84,6 +100,7 @@ async function handleDelivery(deliveryId) {
     });
 
     if (ok) {
+        await recordSuccess(endpoint.id);
         await prisma.delivery.update({
             where: { id: delivery.id },
             data: { status: 'delivered', attemptCount: attemptNum, nextAttemptAt: null },
@@ -91,6 +108,8 @@ async function handleDelivery(deliveryId) {
         console.log(`[deliveryWorker] delivery ${delivery.id} -> delivered (status ${statusCode})`);
         return;
     }
+
+    await recordFailure(endpoint.id, new Date());
 
     const delayMs = getDelayMs(attemptNum);
     if (attemptNum >= MAX_ATTEMPTS || delayMs === null) {
@@ -122,4 +141,8 @@ async function handleDelivery(deliveryId) {
     console.log(`[deliveryWorker] delivery ${delivery.id} -> retry in ${delayMs}ms (attempt ${attemptNum})`);
 }
 
-start();
+module.exports = { handleDelivery };
+
+if (require.main === module) {
+    start();
+}

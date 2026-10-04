@@ -112,6 +112,33 @@
   margin: 0 0 20px;
 }
 
+.dashboard-header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-filter {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
 .dashboard-page h1 {
   font-size: 26px;
   letter-spacing: normal;
@@ -131,6 +158,26 @@
 
 .btn-secondary:hover {
   background: var(--social-bg);
+}
+
+.btn-primary {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dashboard-status {
@@ -171,4 +218,44 @@
 
 .event-table tbody tr:hover {
   background: var(--social-bg);
+}
+
+.event-row {
+  cursor: pointer;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.payload-block {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.attempt-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.attempt-timeline li {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.attempt-timeline li:last-child {
+  border-bottom: none;
 }

@@ -27,4 +27,8 @@ async function start() {
     setInterval(tick, POLL_INTERVAL_MS);
 }
 
-start();
+module.exports = { pollOnce };
+
+if (require.main === module) {
+    start();
+}

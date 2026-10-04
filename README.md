@@ -44,7 +44,7 @@ npm run start:retry-poller         # retry poller, separate terminal
 npm run start:recovery-scan        # recovery scan, separate terminal
 ```
 
-Run the test suite with `npm test` (needs `docker compose up -d` running — no isolated test database yet, see Roadmap).
+Run the test suite with `npm test` (needs `docker compose up -d` running, and a `postie_test` database migrated + seeded — see `.env.test.example`).
 
 ## API
 
@@ -65,8 +65,11 @@ All routes below require `Authorization: Bearer <api key>`. See `prisma/seed.js`
 
 Documented deliberately rather than hidden, since knowing what's missing is part of the design:
 
-- **Circuit breaker** (`docs/ARCHITECTURE.md` §8) — `Endpoint.failureCount` exists in the schema but nothing increments it or pauses sending to a consistently-failing endpoint yet.
-- **Human login.** `User.passwordHash` is modeled but there's no signup/login — today, an API key is the only credential, meant for server-to-server calls, not a dashboard.
-- **Isolated test database.** The test suite (`npm test`) runs against the same dev Postgres/RabbitMQ from `docker-compose.yml`, not a dedicated test instance — fine for now, but test data and dev data currently share the same tables.
 - **Billing (`Plan`/`Subscription`/`UsageRecord`).** Modeled in the schema, no application code uses them yet.
-- **Real deployment.** `DEPLOY.md` documents the path (Railway + CloudAMQP); nothing has actually been provisioned yet.
+
+## Recently shipped (this section is stale beyond this point — full v1.0 rewrite in progress)
+
+- **Circuit breaker** (`docs/ARCHITECTURE.md` §8) — built: 5 failures in a 1-minute window pauses the endpoint for 5 minutes, then a single probe call decides whether to reopen.
+- **Dashboard** (`frontend/`) — React dashboard with login/register, event list with status filter and pagination, and an event detail page with the full delivery-attempt timeline.
+- **Isolated test database** — `npm test` now runs against a dedicated `postie_test` database, not shared dev data.
+- **Real deployment** — live on Railway. Hardening (rate limiting, CORS) in progress.

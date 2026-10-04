@@ -735,3 +735,36 @@ To avoid retrying forever against a target that will never work, recovery attemp
 This design cannot fully distinguish *"still legitimately waiting to be processed"* from *"actually stuck"* — a `received` event that is 5 minutes old might just be sitting behind a busy queue, not lost. The current two-state model (`received` / `queue_failed`) does not have a positive "confirmed delivered" signal, because nothing currently marks an event as successfully consumed.
 
 A more precise version of this design would add an explicit status transition — set only once a worker actually acknowledges the message — so the recovery scan could tell "genuinely stuck" apart from "just slow" with certainty, instead of relying on a time-based guess. That is future work, intentionally out of scope for this write-up.
+
+---
+
+## 17. Frontend Decisions
+
+### Why React?
+
+React builds a UI out of small, independent pieces (components) that each manage their own slice of the screen — `EventList` worries about the event table, `EventDetail` worries about one event's full history, and neither has to know about the other's internals. Beyond the technical fit, React has a huge ecosystem (libraries, tooling, documentation) and is the most in-demand frontend framework for junior developer roles in the Australian market right now — a practical reason as real as the technical one.
+
+### Component tree
+
+```
+App
+├── Login
+├── Register
+├── EventList
+│   ├── EventListHeader (status filter + logout)
+│   └── StatusBadge
+└── EventDetail
+    └── StatusBadge
+```
+
+`App` holds the top-level state (`token`, `view`, `selectedEventId`) and renders exactly one of these at a time, based on whether you're logged in and whether an event is currently selected. `EventList` and `EventDetail` both reuse the same `StatusBadge` component rather than duplicating the status-color logic.
+
+### State approach: plain `useState`, not Context or an external store
+
+Context and external stores (Redux, Zustand) solve a specific problem: sharing state across many deeply-nested components, or avoiding passing the same prop down through five or six layers ("prop drilling"). This dashboard doesn't have that problem — it's four screens deep at most, and state only ever needs to pass down one level (`App` → `EventList`/`EventDetail`). Reaching for Context or a store here would be solving a problem the app doesn't actually have. Plain `useState` in each component, plus props for the little bit of state a parent needs to share, is enough.
+
+### API integration pattern
+
+One shared `axios` instance (`frontend/src/api.js`) carries the base URL (from an env var) and the auth token (attached via `setToken()` after login). Every component that needs data fetches it inside a `useEffect`, never in the render body — fetching in the render body would refire on every re-render, including ones unrelated to the data itself, causing an infinite loop the moment the fetched data triggers a state update.
+
+**Loading/error convention:** every data-fetching component keeps three pieces of local state — `loading`, `error`, and the data itself — and renders conditionally based on which one is true. The same three-state shape repeats in `EventList` and `EventDetail`, so a new data-fetching page can copy the same pattern instead of inventing a new one.

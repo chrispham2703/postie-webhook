@@ -3,9 +3,12 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { PUBLIC_FIELDS: ENDPOINT_PUBLIC_FIELDS } = require('./endpointStore.js');
 
-async function findAll({ cursor, limit, orgId, includeDeliveries = false }) {
+async function findAll({ cursor, limit, orgId, includeDeliveries = false, deliveryStatus }) {
     return await prisma.event.findMany({
-        where: { app: { orgId } },
+        where: {
+            app: { orgId },
+            ...(deliveryStatus && { deliveries: { some: { status: deliveryStatus } } }),
+        },
         take: limit + 1,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
@@ -29,8 +32,21 @@ async function save(data) {
     });
 }
 
-async function findById(id, orgId) {
-    const event = await prisma.event.findFirst({ where: { id, app: { orgId } } });
+async function findById(id, orgId, { includeDeliveries = false } = {}) {
+    const event = await prisma.event.findFirst({
+        where: { id, app: { orgId } },
+        ...(includeDeliveries && {
+            include: {
+                deliveries: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        endpoint: { select: ENDPOINT_PUBLIC_FIELDS },
+                        attempts: { orderBy: { attemptNum: 'asc' } },
+                    },
+                },
+            },
+        }),
+    });
     return event ?? null;
 }
 async function updateStatus(id, status) {
