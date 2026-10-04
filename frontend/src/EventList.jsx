@@ -34,7 +34,7 @@ export function StatusBadge({ status }) {
   );
 }
 
-function EventListHeader({ statusFilter, onStatusFilterChange, onLogout }) {
+function EventListHeader({ statusFilter, onStatusFilterChange, onSendTestEvent, sending, onLogout }) {
   return (
     <div className="dashboard-header">
       <h1>Events</h1>
@@ -46,6 +46,9 @@ function EventListHeader({ statusFilter, onStatusFilterChange, onLogout }) {
             </option>
           ))}
         </select>
+        <button className="btn-primary" onClick={onSendTestEvent} disabled={sending}>
+          {sending ? 'Sending...' : 'Send test event'}
+        </button>
         <button className="btn-secondary" onClick={onLogout}>
           Log out
         </button>
@@ -67,6 +70,26 @@ function EventList({ onLogout, onSelectEvent }) {
   const [cursor, setCursor] = useState(null);
   const [cursorStack, setCursorStack] = useState([]);
   const [pageMeta, setPageMeta] = useState({ nextCursor: null, hasMore: false });
+  const [sending, setSending] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  async function handleSendTestEvent() {
+    setSending(true);
+    try {
+      await api.post('/api/dashboard/events/test');
+      // Jump back to page 1 of the unfiltered list, so the brand-new event
+      // (which sorts first, newest-created-first) is guaranteed to be visible
+      // immediately instead of possibly landing on a page/filter you're not on.
+      setStatusFilter('');
+      setCursor(null);
+      setCursorStack([]);
+      setRefreshKey((k) => k + 1);
+    } catch {
+      alert('Could not send a test event — create an Application first (see the backend API).');
+    } finally {
+      setSending(false);
+    }
+  }
 
   function handleStatusFilterChange(value) {
     setStatusFilter(value);
@@ -119,12 +142,12 @@ function EventList({ onLogout, onSelectEvent }) {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter, cursor]);
+  }, [statusFilter, cursor, refreshKey]);
 
   if (loading) {
     return (
       <div className="dashboard-page">
-        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onLogout={onLogout} />
+        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
         <p className="dashboard-status">Loading events...</p>
       </div>
     );
@@ -133,7 +156,7 @@ function EventList({ onLogout, onSelectEvent }) {
   if (error) {
     return (
       <div className="dashboard-page">
-        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onLogout={onLogout} />
+        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
         <p className="dashboard-status">Couldn't load events — try again</p>
       </div>
     );
@@ -141,7 +164,7 @@ function EventList({ onLogout, onSelectEvent }) {
 
   return (
     <div className="dashboard-page">
-      <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onLogout={onLogout} />
+      <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
       <div className="event-table-wrap">
         <table className="event-table">
           <thead>
