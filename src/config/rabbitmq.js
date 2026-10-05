@@ -1,21 +1,43 @@
 const amqplib = require('amqplib');
 
 const QUEUE_NAME = 'event.deliver';
+let intentionalClose = false;
 let channel = null;
 let connection = null;
 
-async function connect() {
+function scheduleReconnect() {
+    setTimeout(() => {
+        connect().catch(() => {
+            console.error('Connection failed, retrying');
+            scheduleReconnect();
+        });
+    }, 3000);
+}
+
+async function connect()
+{
     connection = await amqplib.connect(process.env.RABBITMQ_URL);
     channel = await connection.createChannel();
+    connection.on('close', () => {
+        if (intentionalClose) {
+            intentionalClose = false;
+        } else {
+            console.log('[RabbitMQ] connection lost, reconnecting...');
+            scheduleReconnect();
+        }
+        });
     await channel.assertQueue(QUEUE_NAME, { durable: true });
     console.log('[RabbitMQ] Connected and channel ready');
 }
 
+
 async function close() {
+    intentionalClose = true
     if (channel) await channel.close();
     if (connection) await connection.close();
     channel = null;
     connection = null;
+
 }
 
 function publish(deliveryId) {
