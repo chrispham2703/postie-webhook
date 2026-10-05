@@ -11,8 +11,27 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
       "Bash(git push:*)",
-      "Bash(rm -rf:*)"
+      "Bash(rm -rf:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(npx prisma migrate reset:*)",
+      "Bash(docker compose down -v:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; case \"$f\" in */src/*.js|*/tests/*.js) npm run lint ;; esac; }"
+          }
+        ]
+      }
     ]
   }
 }
