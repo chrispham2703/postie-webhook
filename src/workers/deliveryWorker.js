@@ -16,6 +16,7 @@ const TIMEOUT_MS = 5000;
 async function start() {
     const connection = await amqplib.connect(process.env.RABBITMQ_URL);
     const channel = await connection.createChannel();
+    connection.on('close', () => { console.log('[deliveryWorker] connection lost, will reconnect'); });
     await channel.assertQueue(QUEUE_NAME, { durable: true });
 
     console.log('[deliveryWorker] connected, waiting for messages...');
@@ -80,7 +81,7 @@ async function handleDelivery(deliveryId) {
         statusCode = res.status;
         responseBody = JSON.stringify(res.data).slice(0, 1000);
     } catch (err) {
-        statusCode = err.code === 'ECONNABORTED' ? 408 : 0;
+                statusCode = err.code === 'ECONNABORTED' ? 408 : 0;
         responseBody = err.message || err.code || 'request failed';
     }
 

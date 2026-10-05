@@ -18,4 +18,11 @@ describe('sign', () => {
         const payload = { orderId: 123 };
         expect(sign(payload, 'secret-a')).not.toBe(sign(payload, 'secret-b'));
     });
+
+    test('a different payload produces a different signature', () => {
+        const payload = { orderId: 123 };
+        const payload2 = { orderId: 234 };
+        const secret = 'whsec_test';
+        expect(sign(payload2, secret)).not.toBe(sign(payload, secret));
+    });
 });
