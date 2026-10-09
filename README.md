@@ -4,6 +4,8 @@ A webhook delivery service — the piece of infrastructure that sits between "so
 
 **Live:** [postie-frontend-production-bbb3.up.railway.app](https://postie-frontend-production-bbb3.up.railway.app) (dashboard) · [postie-webhook-production.up.railway.app](https://postie-webhook-production.up.railway.app) (API)
 
+**[▶ Watch the demo video](https://youtu.be/NSb37vj27fg)** — ~4 minutes, shows a real delivery, a real failure retrying, the circuit breaker pausing, and the code behind it.
+
 > Full write-up of the design, and the trade-offs behind it, in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) and [`docs/QUEUE_DECISION.md`](./docs/QUEUE_DECISION.md). Deploy steps in [`DEPLOY.md`](./DEPLOY.md).
 
 ## What it does
@@ -53,9 +55,9 @@ reads via a logged-in user session (JWT), not the API key.
 
 ## Demo video
 
-https://github.com/chrispham2703/postie-webhook/raw/main/docs/demo/postie-demo.mp4
+[Watch on YouTube](https://youtu.be/NSb37vj27fg)
 
-A 90-second walkthrough: an event delivered successfully, a failed delivery
+A ~4-minute walkthrough: an event delivered successfully, a failed delivery
 retrying with backoff, the circuit breaker pausing a dead endpoint (with the
 actual code behind it), and a real delivery that exhausted every retry and
 landed in the dead-letter view.
