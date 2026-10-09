@@ -51,6 +51,15 @@ reads via a logged-in user session (JWT), not the API key.
 - **Endpoint management API** (`POST/GET/PATCH /api/endpoints`) — customers register and update their own endpoints instead of a dev seeding them by hand. No hard delete: `Endpoint` cascades to `Delivery`, so removing one would erase delivery history — disabling (`PATCH { disabled: true }`) keeps the record.
 - **A Postgres schema modeling the full multi-tenant shape** the system is designed to grow into — organizations, applications, endpoints, events, deliveries, delivery attempts, plans/subscriptions for billing — even where the application code doesn't fully exercise every table yet (see Roadmap below).
 
+## Demo video
+
+https://github.com/chrispham2703/postie-webhook/raw/main/docs/demo/postie-demo.mp4
+
+A 90-second walkthrough: an event delivered successfully, a failed delivery
+retrying with backoff, the circuit breaker pausing a dead endpoint (with the
+actual code behind it), and a real delivery that exhausted every retry and
+landed in the dead-letter view.
+
 ## Screenshots
 
 | Event list (status filter + pagination) | Event detail (fan-out to 2 endpoints, one delivered, one retrying) |
@@ -139,3 +148,4 @@ In practice: a `code-reviewer` subagent runs on every meaningful diff — it's c
 ## Roadmap — designed, not yet (re)built
 
 - **Billing (`Plan`/`Subscription`/`UsageRecord`).** Modeled in the schema, no application code uses them yet.
+- **Self-serve onboarding UI.** Creating an Application, an Endpoint, or an API key is currently API-only — no dashboard form yet. A new customer has to use curl/Postman for first-time setup. "API-first, UI later" is a deliberate sequencing call, not an oversight.
