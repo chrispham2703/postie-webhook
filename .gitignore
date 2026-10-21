@@ -2,3 +2,4 @@
 .env.test
 .idea/
 node_modules/
+.DS_Store
