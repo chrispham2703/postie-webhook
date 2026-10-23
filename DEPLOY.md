@@ -24,6 +24,9 @@ Why: Railway gives managed Postgres and lets each of the 4 processes above run a
 5. **Set env vars** on all 4 services: `DATABASE_URL` (from step 3), `RABBITMQ_URL` (from step 1), `PORT` (API only, Railway sets this automatically).
 6. **Migrations run automatically.** The API service has a **Pre-deploy command** set in Railway (Settings → Deploy): `npx prisma migrate deploy`. Railway runs it before every new deployment starts, so the live database always matches the code. If the migration fails, the new version doesn't start (per Railway's design; not yet tested here). Only the API service has this, so the 4 services don't all try to change the database at once. (Before this, migrations were run by hand, and forgetting once broke the live site; see `docs/AI_WORKFLOW.md` Entry 8.)
 7. **Seed once** (optional, for a demo endpoint to exist): `DATABASE_URL=<railway-url> RABBITMQ_URL=<cloudamqp-url> node prisma/seed.js`.
+8.  **Uptime monitoring:** UptimeRobot checks `/health` every 5 minutes and emails me if it
+    returns an error or doesn't answer. `/health` pings the database, so a database outage
+    also triggers the alert. (Set up in UptimeRobot's dashboard, not in this repo.)
 
 ## Current status
 
