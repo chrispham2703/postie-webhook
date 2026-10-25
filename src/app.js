@@ -16,6 +16,10 @@ const errorHandler = require('./middleware/errorHandler');
 const { connect } = require('./config/rabbitmq');
 
 const app = express();
+// Railway puts one proxy in front of the app. Without this, req.ip is the
+// proxy's address for every caller, so the rate limiters would count all
+// customers in one shared bucket instead of per caller.
+app.set('trust proxy', 1);
 const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 app.use(morgan('combined'));

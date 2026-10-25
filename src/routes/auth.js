@@ -1,12 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
+
+// 10 attempts per 15 minutes per IP -- plenty for a real person mistyping a
+// password, far too few to guess one by trying thousands.
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+});
 
 const authService = require('../services/authService.js');
 const { sign } = require('../utils/jwt.js');
 
 router.post(
     '/signup',
+    authLimiter,
     [
         body('orgName').trim().notEmpty().withMessage('orgName is required'),
         body('email').trim().isEmail().withMessage('email must be valid'),
@@ -42,6 +51,7 @@ router.post(
 
 router.post(
     '/login',
+    authLimiter,
     [
         body('email').trim().isEmail().withMessage('email must be valid'),
         body('password').notEmpty().withMessage('password is required'),
