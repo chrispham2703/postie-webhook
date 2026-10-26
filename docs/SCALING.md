@@ -1,138 +1,113 @@
-# Scaling Postie to 10,000 events/second
+# Scaling Postie to 10,000 events a second
 
-> Study notes for the Week 10 system design question. Written in plain words on purpose.
-> Numbers are rough, to show the idea, not measured.
+> Week 10 system design question, in plain words. Numbers are rough, to show the idea.
 
-**The question:** *"A startup uses Postie. Now 1,000 customers send 10,000 events every second
-(about 10 each). What breaks, and how would you fix it?"*
+**The question:** 1,000 customers send 10,000 events a second (about 10 each). What
+breaks, and how do I fix it?
 
-**What one event looks like** (`POST /api/events`):
-```json
-{ "appId": "app_test_1", "eventType": "order.shipped", "payload": { "orderId": "A1234" } }
-```
-Setup (signup, API key, application, endpoint) happens **once** per customer. Sending events
-happens **all the time**, so the event path is what has to scale.
+Setup (signup, API key, endpoint) happens **once** per customer. Sending events happens
+**all the time**, so that's the part that has to scale.
 
 ---
 
 ## The path of one event
 
 ```
-10,000/sec → 🚪 API → 📒 Database → 📬 Queue → 🚚 Worker → customer's server
+receive  →  save  →  queue  →  deliver
+  API      Postgres  RabbitMQ   worker
 ```
+
+At 10,000 a second, **all four break**.
 
 ---
 
-## The 6 parts
+## 1. Receive (API)
 
-### 1. 🚪 API: the front door
-- **What breaks:** one server can't take 10,000/sec. Also, today's rate limit is
-  100/min per IP (`src/routes/events.js`), so a busy customer gets blocked first.
-- **Fix:** **scale out**, i.e. run several copies of `app.js` behind a **load balancer**
-  (Railway: Settings → Replicas). It works because the API is **stateless**: it saves
-  everything to the database, so any copy can handle any request.
-- **Hidden problems when you copy a server:**
-  - The rate-limit **counter** lives in each copy's memory, so 3 copies = 3× the limit.
-    Fix: one shared counter (e.g. Redis).
-  - Each copy opens its own **database connections**, so 3 copies = 3× the connections.
-    Fix: connection pooling (see Database).
+- **Breaks:** one server can't take 10,000 requests a second. Also, today's rate limit
+  (100 a minute) would block a busy customer.
+- **Fix:** run several copies behind a **load balancer**. This works because the API
+  remembers nothing itself. Everything goes to the database (**stateless**).
+- **Hidden problems with copies:**
+  - Each copy counts the rate limit on its own, so 3 copies = 3× the limit → keep one
+    shared counter (e.g. Redis)
+  - Each copy opens its own database connections → see below
 
-### 2. 📒 Database: the notebook
-- **What breaks:** every event = several writes (event + deliveries + attempts), so that's
-  20,000–30,000 writes/sec and around 860 million new rows a day. **Usually breaks first**,
-  because every other part depends on it.
-- **Fix, simple first:**
-  - Archive old delivered events, so the main tables stay small
-  - Connection pooling: share a few connections instead of opening thousands
-  - Indexes, so searches jump to the right rows (e.g. `@@index([nextAttemptAt])`)
-- **Fix, when that's not enough:**
-  - **Read replicas:** copies that handle *reads* (dashboard). Doesn't help writes.
-  - **Sharding:** split the data (customers A–M on DB 1, N–Z on DB 2). Helps *writes*,
-    but makes queries across everyone hard.
+## 2. Save (database): breaks first
 
-**Why copying a database is hard, but copying the API is easy:**
-- The API **remembers nothing**, so copies never need to agree on anything.
-- A database **is** the memory. Two copies must always agree. If Sarah's order is written
-  to copy 1, copy 2 must get it too, and until it does, they disagree. If both copies
-  change the same row at the same moment, which one wins? Keeping copies in sync is the
-  hard part.
-- That's why replicas take **writes on one main database only**, and why splitting needs
-  a clear rule for "which data lives where".
+- **Breaks:** every event is several writes, so 20–30 thousand writes a second, and
+  around 860 million new rows a day. Everything else depends on it.
+- **Fix, easiest first:**
+  1. **Connection pooling:** share a few connections instead of thousands
+  2. **Indexes:** jump straight to the right rows
+  3. **One table per month** (partitioning): old months can be archived or dropped
+  4. **Read copies** (replicas): help the dashboard's reads, but not writes
+  5. Last: **split the data** across databases by customer (sharding). Hardest, so last
+- **Why copying a database is hard:** the API remembers nothing, so copies never need to
+  agree. A database *is* the memory, so its copies must always agree, which is hard. So
+  writes go to one main database, and copies are only for reading.
 
-### 3. 📬 Queue: the waiting line
-- **What breaks:** CloudAMQP free plan (tiny), and only **one** RabbitMQ. If it dies,
-  nothing is delivered.
+## 3. Queue (RabbitMQ)
+
+- **Breaks:** one RabbitMQ, on a free plan. If it dies, nothing gets delivered.
 - **Fix:**
-  - **Scale up:** a bigger, paid plan
-  - **Scale out:** a RabbitMQ **cluster**, several servers working as one. If one dies, the
-    others continue.
-  - **Kafka:** built for huge streams, but more complex, and loses things Postie relies on
-    (simple per-message "failed, retry later"). Postie is a task queue problem, not a
-    stream problem (`docs/QUEUE_DECISION.md`), so a RabbitMQ cluster is usually enough.
+  - A bigger plan (**scale up**), and several RabbitMQ servers working as one (**cluster**,
+    scale out)
+  - **Prefetch:** limit how many messages each worker holds at once, so work is shared
+    fairly. Postie doesn't set this yet.
+  - **Kafka?** Faster at huge scale, but loses easy "this one failed, retry it later".
+    Postie is a task queue, not a data stream (`docs/QUEUE_DECISION.md`), so RabbitMQ stays.
 
-### 4. 🚚 Worker: the delivery driver
-- **What breaks:** the worker waits for each customer's server to answer (up to the 5s
-  timeout). One worker handles only a few per second.
-- **Fix:** **more workers.** RabbitMQ gives each message to only one worker automatically.
-- **Hidden problem: duplicates.** A worker sends a message, then crashes before telling
-  RabbitMQ "done" (`channel.ack`). RabbitMQ gives it to another worker, so it's sent twice.
-  - Postie's choice: **at-least-once**. Better twice than lost: a duplicate can be caught,
-    a lost message is invisible.
-  - **Idempotency:** every message has a unique ID. The *receiver* keeps a list of IDs it
-    has seen and skips repeats, like a lift button: pressing twice still goes to the floor once.
+## 4. Deliver (worker)
 
-### 5. 👀 Monitoring: the dashboard
-At 10,000/sec things go wrong constantly, often at 3am. Watch 4 gauges, each with an alert:
+- **Breaks:** each delivery waits for the other server (up to 5 seconds).
+- **Fix:** more workers.
+  - **How many?** Jobs per second × time per job = jobs running at once.
+    10,000 × 0.5 s = 5,000 at once. If each worker handles 100 → **about 50 workers**.
+- **Duplicates:** if a worker crashes after sending but before confirming, the message is
+  sent again. Postie accepts that: **twice is better than lost**. Every message has a
+  unique ID, so the receiver can skip repeats (**idempotency**, like a lift button).
 
-| Gauge | Tells you |
+## 5. Monitoring
+
+Watch four numbers, with alerts:
+
+| Number | Tells you |
 |---|---|
 | Queue length | Workers can't keep up |
-| Messages that gave up (dead-letter) | Something keeps failing, so customers are losing messages |
-| How late messages arrive (p95) | Working, but slow. Look at the slowest 5%, not the average |
-| Circuit breaker state | 1 paused endpoint = normal, 50 = something big is wrong |
+| Messages that gave up (dead letter list) | Something keeps failing |
+| How late messages arrive (slowest 5%, p95) | Working, but slow |
+| Paused endpoints (circuit breakers) | 1 is normal, 50 means something big is wrong |
 
-Example alert: *"queue longer than 50,000 for 5 minutes → message the engineer."*
+## 6. The price
 
-### 6. ⚖️ Trade-offs
-- **What breaks first:** the database, because everything depends on it.
-- **What you give up:**
-
-  | You gain | You give up |
-  |---|---|
-  | Many servers and workers | Simplicity: more moving parts, harder to debug |
-  | Workers in parallel | Perfect order: message 2 can arrive before message 1 |
-  | Never losing a message | Exactly once: sometimes a message arrives twice |
-
-- **The bill:** today, free plans (roughly $0–20/month). At 10,000/sec, many servers, a big
-  database, paid RabbitMQ and monitoring: hundreds to thousands a month. So scale only
-  what you need, and start simple.
+- **Breaks first:** the database
+- **You give up:** simplicity, strict order (message 2 may arrive before message 1), and
+  exactly once delivery
+- **The bill:** from almost free to hundreds or thousands of dollars a month
+- **So:** only scale what actually hits its limit, and start with the simplest fix
 
 ---
 
 ## Two words to remember
 
-- **Scale up** = make the one machine stronger. Easy, but there's a ceiling, and it's still
-  only one.
-- **Scale out** = add more machines. No ceiling, survives failures, but brings the hidden
-  problems (shared counters, connections, duplicates).
-- Usual order: scale **up** first, then **out**.
+- **Scale up** = make one machine stronger. Easy, but it has a ceiling, and it's still one.
+- **Scale out** = add more machines. No ceiling and survives failures, but brings the
+  hidden problems above.
 
 ---
 
-## What Postie has today (honest)
+## What Postie has today
 
-- ✅ Stateless API, at-least-once delivery, `messageId` for dedupe, circuit breaker, index on `nextAttemptAt`
-- ❌ One copy of everything, free-tier queue
-- ❌ No monitoring or alerts; `/health` always says "ok"
-- ❌ Live migrations run by hand
-- ❌ Retry poller loads every due delivery at once (`src/workers/retryPoller.js`, no `take`)
+- ✅ Stateless API, at least once delivery, unique message IDs, circuit breaker, index on retry time
+- ✅ Real health check (tests the database), uptime alerts, automatic migrations on deploy (October 2026)
+- ❌ One copy of everything, free plan queue, no prefetch limit
+- ❌ Retry poller loads every due delivery at once (`src/workers/retryPoller.js`)
+- ❌ `deliveryWorker.js` doesn't reconnect if its queue connection drops
 
-## Still open
-- Coach's probe: *"Which parts would you let an agent build, and which would you design yourself?"*
+## Self test (no notes)
 
-## Self-test (no notes)
-1. Draw the path of one event, and say what breaks at each stop.
+1. Draw the path of one event and say what breaks at each stop.
 2. Why is copying the API easy but copying the database hard?
 3. Scale up vs scale out, with an example of each.
-4. Why at-least-once, and what does the receiver do about duplicates?
-5. Which 4 gauges would you watch?
+4. Why "twice is better than lost", and what does the receiver do?
+5. Which four numbers would you watch?
