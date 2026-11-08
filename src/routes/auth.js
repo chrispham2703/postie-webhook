@@ -17,9 +17,9 @@ router.post(
     '/signup',
     authLimiter,
     [
-        body('orgName').trim().notEmpty().withMessage('orgName is required'),
-        body('email').trim().isEmail().withMessage('email must be valid'),
-        body('password').isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
+        body('orgName').isString().trim().notEmpty().withMessage('orgName is required'),
+        body('email').isString().trim().isEmail().withMessage('email must be valid'),
+        body('password').isString().isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -53,8 +53,8 @@ router.post(
     '/login',
     authLimiter,
     [
-        body('email').trim().isEmail().withMessage('email must be valid'),
-        body('password').notEmpty().withMessage('password is required'),
+        body('email').isString().trim().isEmail().withMessage('email must be valid'),
+        body('password').isString().notEmpty().withMessage('password is required'),
     ],
     async (req, res) => {
         const errors = validationResult(req);

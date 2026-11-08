@@ -57,4 +57,54 @@ describe('POST /api/auth/signup and /login', () => {
         const res = await request(buildApp()).post('/api/auth/login').send({ email, password: 'wrong-password' });
         expect(res.status).toBe(401);
     });
+
+    // Each element is valid on its own, so only the array shape can fail validation.
+    test('signup 422s when orgName is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/auth/signup')
+            .send({ orgName: ['Auth Test Co', 'Other Co'], email: `test-${crypto.randomUUID()}@example.com`, password });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('signup 422s when email is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/auth/signup')
+            .send({
+                orgName: 'Auth Test Co',
+                email: [`test-${crypto.randomUUID()}@example.com`, `test-${crypto.randomUUID()}@example.com`],
+                password,
+            });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('signup 422s when password is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/auth/signup')
+            .send({
+                orgName: 'Auth Test Co',
+                email: `test-${crypto.randomUUID()}@example.com`,
+                password: ['password123', 'password456'],
+            });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('login 422s when email is an array', async () => {
+        const res = await request(buildApp()).post('/api/auth/login').send({ email: [email, email], password });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('login 422s when password is an array', async () => {
+        const res = await request(buildApp()).post('/api/auth/login').send({ email, password: [password, password] });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
 });

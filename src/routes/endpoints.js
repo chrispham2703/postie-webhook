@@ -12,8 +12,8 @@ router.use(apiKeyAuth);
 router.post(
     '/',
     [
-        body('appId').trim().notEmpty().withMessage('appId is required'),
-        body('url').trim().isURL().withMessage('url must be a valid URL'),
+        body('appId').isString().trim().notEmpty().withMessage('appId is required'),
+        body('url').isString().trim().isURL().withMessage('url must be a valid URL'),
         body('description').optional().isString(),
         body('filterTypes').optional().isArray().withMessage('filterTypes must be an array of strings'),
         body('filterTypes.*').optional().isString(),
@@ -64,7 +64,7 @@ router.get('/:id', async (req, res) => {
 router.patch(
     '/:id',
     [
-        body('url').optional().trim().isURL().withMessage('url must be a valid URL'),
+        body('url').optional().isString().trim().isURL().withMessage('url must be a valid URL'),
         body('description').optional().isString(),
         body('filterTypes').optional().isArray().withMessage('filterTypes must be an array of strings'),
         body('filterTypes.*').optional().isString(),
