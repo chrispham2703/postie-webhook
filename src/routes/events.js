@@ -48,7 +48,7 @@ router.post(
                     code: 'VALIDATION_FAILED',
                     message: 'Invalid request data',
                 },
-                details: errors.array(),
+                details: errors.array().map(({ path, msg }) => ({ path, msg })),
             });
         }
 
