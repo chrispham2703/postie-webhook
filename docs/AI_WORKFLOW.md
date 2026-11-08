@@ -267,3 +267,32 @@ about `PUBLIC_FIELDS` or the `apiKeyAuth`/`userAuth` split on its own; those liv
 code comments and `CLAUDE.md`, not the database). It's a shortcut for "what does the
 data actually look like right now," not a replacement for reading the code to
 understand behavior.
+
+## Entry 9 — The secret-block hook was never tested, and it had holes
+
+**What happened:** I added a hook to stop Claude from running commands that show
+secrets. I committed it with the note "untested live". When I finally tested it,
+3 commands that show secrets got through (`exit=0`):
+- `echo $JWT_SECRET`
+- `printenv`
+- `grep SECRET .en*`
+
+**Root cause:** The hook only checks for words in the command. Its list of blocked
+words was a general list, not made from Postie's real `.env`. 3 of the 5 words
+(`PRIVATE KEY`, `HMAC_SECRET`, `AWS_SECRET`) are not used in Postie at all. 3 real
+secrets were missing: `JWT_SECRET`, `RABBITMQ_URL`, `RESEND_API_KEY`.
+
+**How I caught it:** I tested the hook by sending it fake commands and checking the
+exit code (2 = blocked, 0 = allowed). Then I tried to get secrets without using the
+blocked words.
+
+**What I changed:**
+- Blocked general words instead of exact names: `SECRET`, `_KEY`, `PASSWORD`
+- Blocked `.en` (catches `.en*`), `printenv` and `env`
+- Tested it live in Claude Code: `cat .env.example` was blocked
+- Still open: tricks like `.e?v` can get through. A word check can never catch
+  everything. I accept this because my local `.env` only has local dev secrets,
+  not production ones.
+
+**Lesson:** A safety check that was never tested is not a safety check. AI wrote a
+list that looked right but did not match my project.

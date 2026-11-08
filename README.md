@@ -136,6 +136,9 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 | `GET /api/dashboard/events` | List events for the dashboard, with a `?status=` filter (`pending`/`delivered`/`failed_permanent`) and pagination |
 | `GET /api/dashboard/events/:id` | Full event detail: payload + every delivery's full attempt timeline |
 | `POST /api/dashboard/events/test` | Send a canned test event to your first application's registered endpoints — the in-dashboard test trigger, no external tool needed |
+| `POST /api/dashboard/applications` | Create an application from the dashboard (`owner`/`admin` only). Same applications as `/api/applications`, which stays API-key-only for customers' servers |
+| `GET /api/dashboard/applications` | List your org's applications |
+| `GET /api/dashboard/applications/:id` | Fetch a single application |
 
 ## How this was built
 
