@@ -23,7 +23,7 @@ router.post(
         if (!errors.isEmpty()) {
             return res.status(422).json({
                 error: { code: 'VALIDATION_FAILED', message: 'Invalid request data' },
-                details: errors.array(),
+                details: errors.array().map(({ path, msg }) => ({ path, msg })),
             });
         }
 
@@ -75,7 +75,7 @@ router.patch(
         if (!errors.isEmpty()) {
             return res.status(422).json({
                 error: { code: 'VALIDATION_FAILED', message: 'Invalid request data' },
-                details: errors.array(),
+                details: errors.array().map(({ path, msg }) => ({ path, msg })),
             });
         }
 

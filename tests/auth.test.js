@@ -92,6 +92,8 @@ describe('POST /api/auth/signup and /login', () => {
 
         expect(res.status).toBe(422);
         expect(res.body.error.code).toBe('VALIDATION_FAILED');
+        // the 422 must never echo the submitted password back
+        expect(JSON.stringify(res.body)).not.toContain('password456');
     });
 
     test('login 422s when email is an array', async () => {
