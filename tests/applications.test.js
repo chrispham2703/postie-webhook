@@ -87,4 +87,61 @@ describe('/api/applications (integration, needs docker compose up)', () => {
         await prisma.apiKey.deleteMany({ where: { orgId: otherOrgId } });
         await prisma.organization.delete({ where: { id: otherOrgId } });
     });
+
+    test('two apps with uid: null both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Null Uid A', uid: null });
+        const second = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Null Uid B', uid: null });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('two apps with uid: "" both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Empty Uid A', uid: '' });
+        const second = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Empty Uid B', uid: '' });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('two apps with uid: "   " both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Blank Uid A', uid: '   ' });
+        const second = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: 'Blank Uid B', uid: '   ' });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('422s when name is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/applications')
+            .set('Authorization', `Bearer ${rawKey}`)
+            .send({ name: ['a', 'b'] });
+
+        expect(res.status).toBe(422);
+    });
 });

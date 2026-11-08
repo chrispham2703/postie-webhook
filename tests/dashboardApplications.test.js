@@ -118,4 +118,61 @@ describe('/api/dashboard/applications (integration, needs docker compose up)', (
             .set('Authorization', `Bearer ${otherToken}`);
         expect(res.status).toBe(404);
     });
+
+    test('two apps with uid: null both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Null Uid A', uid: null });
+        const second = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Null Uid B', uid: null });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('two apps with uid: "" both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Empty Uid A', uid: '' });
+        const second = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Empty Uid B', uid: '' });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('two apps with uid: "   " both get created', async () => {
+        const first = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Blank Uid A', uid: '   ' });
+        const second = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: 'Blank Uid B', uid: '   ' });
+
+        expect(first.status).toBe(201);
+        expect(second.status).toBe(201);
+        expect(first.body.data.uid).toBeNull();
+        expect(second.body.data.uid).toBeNull();
+    });
+
+    test('422s when name is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/dashboard/applications')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: ['a', 'b'] });
+
+        expect(res.status).toBe(422);
+    });
 });
