@@ -19,11 +19,12 @@ npm run start:retry-poller
 npm run start:recovery-scan
 
 npm test
+npm run lint                    # eslint on src/ and tests/
 npx jest tests/events.test.js   # single file
 npx jest -t "test name"         # single test
 ```
 
-`DATABASE_URL` (not `DB_URL`), `RABBITMQ_URL`, `JWT_SECRET`, `RESEND_API_KEY` in `.env`. No lint script.
+`DATABASE_URL` (not `DB_URL`), `RABBITMQ_URL`, `JWT_SECRET`, `RESEND_API_KEY` in `.env`.
 No isolated test DB — tests need the seed data above (`org_test_1`).
 
 ## Structure
@@ -43,12 +44,13 @@ the current one already belongs to a different feature.
 
 ## Landmines
 
-- Auth: `apiKeyAuth` (raw key) guards `/api/events`, `/api/endpoints`, **and `/api/applications`**
-  (verified in `src/routes/applications.js` — this file previously said `userAuth` guarded
-  `/api/applications`; it doesn't yet). `userAuth` (JWT) guards `/api/api-keys` only so far
-  (`src/routes/apiKeys.js` is the one real example to copy). `/api/auth` (signup/login) has
-  no guard, by design — there's no token yet at that point. Never mix `apiKeyAuth` and
-  `userAuth` within the same router file.
+- Auth: `apiKeyAuth` (raw key, for customers' servers) guards `/api/events`, `/api/endpoints`,
+  `/api/applications`. `userAuth` (JWT, for people on the dashboard) guards `/api/api-keys` and
+  everything under `/api/dashboard/*`. When the dashboard needs a resource that only has an
+  API-key route, add a `/api/dashboard/<resource>` twin in its own file (e.g.
+  `dashboardApplications.js`) — don't switch the existing route's auth, customers' servers
+  depend on it. `/api/auth` (signup/login) has no guard, by design — there's no token yet at
+  that point. Never mix `apiKeyAuth` and `userAuth` within the same router file.
 - Scope every id lookup by `orgId`. Cross-org resource → 404, never 403 (403 leaks existence).
 - `createDeliveries()` upserts on `[eventId, endpointId]`. Never change to `create` — recovery scan
   re-runs it for the same event.
