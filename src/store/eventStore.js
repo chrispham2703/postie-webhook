@@ -32,6 +32,12 @@ async function save(data) {
     });
 }
 
+async function findByMessageId(appId, messageId) {
+    return await prisma.event.findUnique({
+        where: { appId_messageId: { appId, messageId } },
+    });
+}
+
 async function findById(id, orgId, { includeDeliveries = false } = {}) {
     const event = await prisma.event.findFirst({
         where: { id, app: { orgId } },
@@ -56,4 +62,4 @@ async function updateStatus(id, status) {
     });
     return event;
 }
-module.exports = { findAll, save, findById, updateStatus };
+module.exports = { findAll, save, findById, findByMessageId, updateStatus };

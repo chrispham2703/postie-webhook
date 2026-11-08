@@ -112,7 +112,7 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 
 | Endpoint | Description |
 |---|---|
-| `POST /api/events` | Create an event, fan it out to matching endpoints, publish for delivery. Rate-limited: 100/min per IP |
+| `POST /api/events` | Create an event, fan it out to matching endpoints, publish for delivery. Optional `messageId` is unique per application: sending one again returns the original event with `200` and fans out nothing (a different `eventType`/`payload` on the retry is ignored). Rate-limited: 100/min per IP |
 | `GET /api/events` | List events for your org, cursor-paginated (`?cursor=`, `?limit=`) |
 | `GET /api/events/:id` | Fetch a single event, `404` if it doesn't exist (or belongs to another org) |
 | `POST /api/endpoints` | Register an endpoint for one of your applications |

@@ -11,7 +11,7 @@ const createEventLimiter = rateLimit({
     limit: 100,
 });
 
-const { save, findAll, findById, updateStatus } = require('../store/eventStore.js');
+const { save, findAll, findById, findByMessageId, updateStatus } = require('../store/eventStore.js');
 const { createDeliveries } = require('../services/deliveryService.js');
 const { findOwnedApplication } = require('../services/applicationService.js');
 const { publish } = require('../config/rabbitmq.js');
@@ -39,6 +39,8 @@ router.post(
             .isObject().withMessage('payload must be an object')
             .custom((value) => Object.keys(value || {}).length > 0)
             .withMessage('payload cannot be empty'),
+
+        body('messageId').optional({ values: 'null' }).isString().isLength({ max: 255 }),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -61,7 +63,20 @@ router.post(
             });
         }
 
-        const newEvent = await save({ appId, eventType, payload, messageId });
+        // Unique on [appId, messageId], so a retry (or two racing requests) hits
+        // P2002 and gets the original event back instead of a second fan-out.
+        let newEvent;
+        try {
+            newEvent = await save({ appId, eventType, payload, messageId: messageId || null });
+        } catch (err) {
+            if (err.code === 'P2002' && messageId) {
+                const existing = await findByMessageId(appId, messageId);
+                if (existing) {
+                    return res.status(200).json({ data: existing });
+                }
+            }
+            throw err;
+        }
         console.log(`[Event] created ${newEvent.id}`);
         try {
             const deliveries = await createDeliveries(newEvent);
