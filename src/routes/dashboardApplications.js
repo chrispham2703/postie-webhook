@@ -16,8 +16,8 @@ router.post(
     '/',
     requireRole('owner', 'admin'),
     [
-        body('name').trim().notEmpty().withMessage('name is required'),
-        body('uid').optional().trim().isString(),
+        body('name').isString().trim().notEmpty().withMessage('name is required'),
+        body('uid').optional({ values: 'null' }).isString().trim(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -31,7 +31,7 @@ router.post(
         const { name, uid } = req.body;
 
         try {
-            const app = await applicationStore.create({ orgId: req.orgId, name, uid });
+            const app = await applicationStore.create({ orgId: req.orgId, name, uid: uid || null });
             res.status(201).json({ data: app });
         } catch (err) {
             if (err.code === 'P2002') {
