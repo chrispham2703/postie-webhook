@@ -47,6 +47,14 @@ describe('/api/api-keys (integration, needs docker compose up)', () => {
         expect(res.status).toBe(403);
     });
 
+    test('422s when name is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/api-keys')
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ name: ['ci key', 'other key'] });
+        expect(res.status).toBe(422);
+    });
+
     test('owner can create a key, raw key shown once', async () => {
         const res = await request(buildApp())
             .post('/api/api-keys')

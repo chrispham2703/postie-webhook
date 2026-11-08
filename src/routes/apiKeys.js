@@ -13,7 +13,7 @@ router.use(userAuth);
 router.post(
     '/',
     requireRole('owner', 'admin'),
-    [body('name').trim().notEmpty().withMessage('name is required')],
+    [body('name').isString().trim().notEmpty().withMessage('name is required')],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

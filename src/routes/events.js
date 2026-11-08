@@ -26,13 +26,14 @@ router.post(
     createEventLimiter,
     [
         body('appId')
+            .isString()
             .trim()
             .notEmpty().withMessage('appId is required'),
 
         body('eventType')
+            .isString().withMessage('eventType must be a string')
             .trim()
-            .notEmpty().withMessage('eventType is required')
-            .isString().withMessage('eventType must be a string'),
+            .notEmpty().withMessage('eventType is required'),
 
         body('payload')
             .isObject().withMessage('payload must be an object')

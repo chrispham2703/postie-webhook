@@ -63,6 +63,30 @@ describe('/api/endpoints (integration, needs docker compose up + seed)', () => {
         expect(res.body.data.disabled).toBe(true);
     });
 
+    test('POST 422s when appId is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/endpoints')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ appId: ['app_test_1', 'app_test_1'], url: 'https://httpbin.org/post' });
+        expect(res.status).toBe(422);
+    });
+
+    test('POST 422s when url is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/endpoints')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ appId: 'app_test_1', url: ['https://httpbin.org/post', 'https://example.com'] });
+        expect(res.status).toBe(422);
+    });
+
+    test('PATCH 422s when url is an array', async () => {
+        const res = await request(buildApp())
+            .patch(`/api/endpoints/${createdId}`)
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ url: ['https://httpbin.org/post', 'https://example.com'] });
+        expect(res.status).toBe(422);
+    });
+
     describe('cross-org isolation', () => {
         const otherOrgId = 'org_test_isolation_temp';
         const otherRawKey = `temp_${crypto.randomUUID()}`;

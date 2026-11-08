@@ -53,6 +53,26 @@ describe('POST /api/events (integration, needs docker compose up + seed)', () =>
         expect(res.body.error.code).toBe('VALIDATION_FAILED');
     });
 
+    test('422s when appId is an array', async () => {
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ appId: ['app_test_1', 'app_test_1'], eventType: 'order.created', payload: { a: 1 } });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    test('422s when eventType is a number', async () => {
+        const res = await request(buildApp())
+            .post('/api/events')
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ appId: 'app_test_1', eventType: 123, payload: { a: 1 } });
+
+        expect(res.status).toBe(422);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
     test('404s when appId belongs to a different org (or does not exist)', async () => {
         const res = await request(buildApp())
             .post('/api/events')
