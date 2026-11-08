@@ -141,7 +141,7 @@ model Endpoint {
 model Event {
   id               String   @id
   appId            String
-  messageId        String?  @unique
+  messageId        String?
   eventType        String
   payload          Json
   status           String   @default("received")
@@ -152,6 +152,7 @@ model Event {
   app        Application @relation(fields: [appId], references: [id], onDelete: Cascade)
   deliveries Delivery[]
 
+  @@unique([appId, messageId])
   @@index([appId])
   @@map("events")
 }
