@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Webhook delivery service: event → API → fanned out to endpoints → queued worker delivers with retry.
 Design docs: `docs/ARCHITECTURE.md`, `docs/QUEUE_DECISION.md`. Deploy: `DEPLOY.md`.
+Known deferred gaps: `docs/BACKLOG.md`. Check it before working in an area; delete an item in the
+PR that fixes it.
 
 ## Commands
 
