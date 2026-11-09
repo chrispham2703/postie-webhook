@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
+const { validationResult } = require('express-validator');
 
 const endpointStore = require('../store/endpointStore.js');
+const { createEndpointRules, updateEndpointRules } = require('../validators/endpointValidators.js');
 const { findOwnedApplication } = require('../services/applicationService.js');
 const { apiKeyAuth } = require('../middleware/apiKeyAuth.js');
 
@@ -11,13 +12,7 @@ router.use(apiKeyAuth);
 // POST /api/endpoints
 router.post(
     '/',
-    [
-        body('appId').isString().trim().notEmpty().withMessage('appId is required'),
-        body('url').isString().trim().isURL().withMessage('url must be a valid URL'),
-        body('description').optional().isString(),
-        body('filterTypes').optional().isArray().withMessage('filterTypes must be an array of strings'),
-        body('filterTypes.*').optional().isString(),
-    ],
+    createEndpointRules,
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -63,13 +58,7 @@ router.get('/:id', async (req, res) => {
 // history. Disabling keeps the record (and the audit trail) around.
 router.patch(
     '/:id',
-    [
-        body('url').optional().isString().trim().isURL().withMessage('url must be a valid URL'),
-        body('description').optional().isString(),
-        body('filterTypes').optional().isArray().withMessage('filterTypes must be an array of strings'),
-        body('filterTypes.*').optional().isString(),
-        body('disabled').optional().isBoolean().withMessage('disabled must be a boolean'),
-    ],
+    updateEndpointRules,
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

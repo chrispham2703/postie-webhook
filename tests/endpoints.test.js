@@ -63,6 +63,21 @@ describe('/api/endpoints (integration, needs docker compose up + seed)', () => {
         expect(res.body.data.disabled).toBe(true);
     });
 
+    test('PATCH accepts disabled: false', async () => {
+        const res = await request(buildApp())
+            .patch(`/api/endpoints/${createdId}`)
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ disabled: false });
+        expect(res.status).toBe(200);
+        expect(res.body.data.disabled).toBe(false);
+
+        // put it back, so it doesn't get deliveries in other test files
+        await request(buildApp())
+            .patch(`/api/endpoints/${createdId}`)
+            .set('Authorization', `Bearer ${VALID_KEY}`)
+            .send({ disabled: true });
+    });
+
     test('POST 422s when appId is an array', async () => {
         const res = await request(buildApp())
             .post('/api/endpoints')
@@ -86,6 +101,17 @@ describe('/api/endpoints (integration, needs docker compose up + seed)', () => {
             .send({ url: ['https://httpbin.org/post', 'https://example.com'] });
         expect(res.status).toBe(422);
     });
+
+    test.each([['"true"', 'true'], ['1', 1], ['[true]', [true]]])(
+        'PATCH 422s when disabled is %s instead of a boolean',
+        async (_label, disabled) => {
+            const res = await request(buildApp())
+                .patch(`/api/endpoints/${createdId}`)
+                .set('Authorization', `Bearer ${VALID_KEY}`)
+                .send({ disabled });
+            expect(res.status).toBe(422);
+        }
+    );
 
     describe('cross-org isolation', () => {
         const otherOrgId = 'org_test_isolation_temp';

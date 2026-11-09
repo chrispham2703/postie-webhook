@@ -3,7 +3,23 @@
 Known gaps that were found and deliberately deferred. Before starting work in an area, check
 here first. When an item is done, delete it in the same PR.
 
+## Next
+
+- **Disabled endpoints still get in-flight deliveries.** Fan-out skips `disabled: true`
+  (`deliveryService.findMatchingEndpoints`), but `deliveryWorker.handleDelivery` and `retryPoller`
+  never check it, so queued deliveries and pending retries still go out after an endpoint is
+  disabled. Fix in its own PR right after dashboard endpoints, before the frontend Disable button.
+  See `docs/DASHBOARD_ENDPOINTS.md` failure mode 6.
+
 ## Security / auth
+
+- **No way to rotate an endpoint's signing secret.** The `whsec_` secret is shown once on create
+  and never again. If it's lost or leaked, the only fix is registering a new endpoint and disabling
+  the old one. Idea: an owner/admin rotate route that returns the new secret once.
+- **SSRF via endpoint URLs.** `url` only has to pass `isURL()`, so it can point at internal
+  addresses (`http://localhost`, `169.254.169.254`), and the delivery worker will POST to them.
+  Dashboard endpoints widen who can set URLs to every admin. Fix: resolve the host and reject
+  private/loopback/link-local ranges, at create/update and again at delivery time.
 
 - **Stale JWT role, removed user keeps access (up to 7 days).** `userAuth` trusts `orgId` and
   `role` from the token and never checks the DB. A demoted admin or a removed user keeps their old
@@ -16,12 +32,10 @@ here first. When an item is done, delete it in the same PR.
 
 ## Validation / API
 
-- **`disabled` on PATCH /api/endpoints/:id** (`endpoints.js`): `isBoolean()` accepts `"true"`,
-  `"1"` and arrays, and the value reaches Prisma unconverted → likely 500. Check
-  `typeof v === 'boolean'`.
 - **`?cursor=a&cursor=b`** arrives as an array (`src/utils/pagination.js`) → likely 500.
-- **Dashboard write routes rely on remembering `requireRole`.** A new PATCH/DELETE that forgets it
-  lets members write. Idea: one router-level rule that every non-GET needs owner/admin.
+- **`dashboardApplications.js` relies on remembering `requireRole`.** A new PATCH/DELETE that
+  forgets it lets members write. `dashboardEndpoints.js` already has the router-level rule (every
+  non-GET needs owner/admin); copy it over.
 - **`messageId` is optional** (product decision). Making it required would break existing
   customers' servers; documented instead.
 

@@ -12,6 +12,7 @@ const authRouter = require('./routes/auth');
 const apiKeyRouter = require('./routes/apiKeys');
 const dashboardEventsRouter = require('./routes/dashboardEvents');
 const dashboardApplicationsRouter = require('./routes/dashboardApplications');
+const dashboardEndpointsRouter = require('./routes/dashboardEndpoints');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 const { connect } = require('./config/rabbitmq');
@@ -34,6 +35,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/api-keys', apiKeyRouter);
 app.use('/api/dashboard/events', dashboardEventsRouter);
 app.use('/api/dashboard/applications', dashboardApplicationsRouter);
+app.use('/api/dashboard/endpoints', dashboardEndpointsRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
