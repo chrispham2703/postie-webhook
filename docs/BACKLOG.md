@@ -16,6 +16,33 @@ here first. When an item is done, delete it in the same PR.
   inside that window, the scan creates a `pending` delivery and sends it. At odds with "disabling is
   final". Existed before the cancel change.
 
+## Frontend
+
+- **The Setup page has no component tests yet.** `frontend/src/Setup.jsx` shipped for a demo with
+  only a manual smoke test. `ShowOnce` is covered (7 tests); the page's test list is in
+  `docs/ONBOARDING_UI.md` §6 (landing rule, checklist states, prerequisites, member read-only,
+  403 fallback, double-submit, 422 messages). Write these next, together.
+
+From `docs/ONBOARDING_UI.md` §7:
+
+- **No router.** Navigation is state in `App.jsx`, so Back leaves the app and refresh lands on the
+  default page. Add `react-router-dom` (plus an SPA fallback on the static host) once there are
+  more than about four top-level pages, or something needs to link straight to a screen.
+- **No end-to-end tests.** Frontend tests are Vitest + Testing Library with `api.js` mocked. A
+  Playwright run against the real stack would prove the full path (real 403s, show-once).
+- **No UI to edit or disable an endpoint.** The PATCH exists. The Disable button needs a
+  confirmation explaining that queued and retrying deliveries are cancelled for good.
+- **No UI to delete an API key.** The DELETE exists.
+- **No way to invite members.** Members can only be added directly in the database, which also
+  makes testing the read-only views by hand awkward.
+- **`vite` 8.2.2 has 3 high-severity `npm audit` advisories** (dev server: cross-origin script
+  execution via custom middleware, files outside `server.fs.allow` served, plus `launch-editor`
+  issues on Windows). Dev-server only, not in the built site. `npm audit fix` bumps it; do it in its
+  own PR and re-run `npm run build` + `npm test`.
+- **The UI reads the role from the unverified JWT payload.** Fine for showing or hiding buttons
+  (the server enforces writes), but it shares the stale-role gap below. A `GET /api/auth/me` that
+  re-checks the DB would fix both.
+
 ## Security / auth
 
 - **No way to rotate an endpoint's signing secret.** The `whsec_` secret is shown once on create
