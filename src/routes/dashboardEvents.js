@@ -10,7 +10,7 @@ const { parsePagination, buildPageResponse } = require('../utils/pagination.js')
 
 router.use(userAuth);
 
-const VALID_STATUSES = ['pending', 'delivered', 'failed_permanent'];
+const VALID_STATUSES = ['pending', 'delivered', 'failed_permanent', 'cancelled'];
 
 router.get('/', async (req, res) => {
     const { limit, cursor } = parsePagination(req.query);

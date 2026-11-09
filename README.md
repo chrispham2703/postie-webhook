@@ -33,6 +33,11 @@ status: delivered                    Retry Poller (backoff ladder)
                                                      v
                                           status: failed_permanent (DLQ)
 
+Endpoint disabled while a delivery is queued or waiting to retry:
+it is cancelled at once and never sent -> status: cancelled (kept, not deleted)
+(a send already in flight at that moment still finishes: delivered if it
+succeeds, otherwise it stays cancelled and is never retried)
+
 Meanwhile: Circuit Breaker watches each Endpoint's failure rate and
 pauses delivery to it if it's clearly down, independent of any single
 Delivery's own retry schedule.
@@ -118,7 +123,7 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 | `POST /api/endpoints` | Register an endpoint for one of your applications |
 | `GET /api/endpoints` | List your org's endpoints |
 | `GET /api/endpoints/:id` | Fetch a single endpoint |
-| `PATCH /api/endpoints/:id` | Update url/filterTypes/description, or disable it |
+| `PATCH /api/endpoints/:id` | Update url/filterTypes/description, or disable it. Disabling cancels deliveries still queued or waiting to retry; re-enabling doesn't resend them |
 | `POST /api/applications` | Create an application |
 | `GET /api/applications` | List your org's applications |
 | `GET /api/applications/:id` | Fetch a single application |
@@ -133,7 +138,7 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 | `POST /api/api-keys` | Mint a new API key (`owner`/`admin` only). Full key shown once |
 | `GET /api/api-keys` | List your org's API keys (name/prefix only, never the raw key) |
 | `DELETE /api/api-keys/:id` | Revoke a key (`owner`/`admin` only) |
-| `GET /api/dashboard/events` | List events for the dashboard, with a `?status=` filter (`pending`/`delivered`/`failed_permanent`) and pagination |
+| `GET /api/dashboard/events` | List events for the dashboard, with a `?status=` filter (`pending`/`delivered`/`failed_permanent`/`cancelled`) and pagination |
 | `GET /api/dashboard/events/:id` | Full event detail: payload + every delivery's full attempt timeline |
 | `POST /api/dashboard/events/test` | Send a canned test event to your first application's registered endpoints — the in-dashboard test trigger, no external tool needed |
 | `POST /api/dashboard/applications` | Create an application from the dashboard (`owner`/`admin` only). Same applications as `/api/applications`, which stays API-key-only for customers' servers |
@@ -142,7 +147,7 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 | `POST /api/dashboard/endpoints` | Register an endpoint for one of your applications (`owner`/`admin` only). The signing secret is in this response only, never again. Same endpoints as `/api/endpoints`, which stays API-key-only for customers' servers |
 | `GET /api/dashboard/endpoints` | List your org's endpoints, optionally `?appId=` for one application. Never includes the secret |
 | `GET /api/dashboard/endpoints/:id` | Fetch a single endpoint, without the secret |
-| `PATCH /api/dashboard/endpoints/:id` | Update `url`, `description`, `filterTypes`, or `disabled` (`owner`/`admin` only). No delete: disable instead. Re-enabling doesn't reset a paused circuit breaker |
+| `PATCH /api/dashboard/endpoints/:id` | Update `url`, `description`, `filterTypes`, or `disabled` (`owner`/`admin` only). No delete: disable instead. Disabling cancels deliveries still queued or waiting to retry; re-enabling doesn't resend them or reset a paused circuit breaker |
 
 ## How this was built
 

@@ -424,6 +424,24 @@ Feynman explanation:
 
 The DLQ helps Postie avoid retrying forever while still keeping failed events visible.
 
+Delivery statuses, all set by the delivery worker:
+
+| Status | Meaning |
+|---|---|
+| `pending` | Not sent yet, or waiting for its next retry (`nextAttemptAt`) |
+| `delivered` | The endpoint answered 2xx |
+| `failed_permanent` | Every retry failed. This is the DLQ |
+| `cancelled` | The endpoint was disabled before this delivery went out. Never sent, never retried, even if the endpoint is re-enabled. Not a dead letter: nothing failed, someone chose to stop it |
+
+Cancelled and failed deliveries are kept, never deleted, so they stay visible on the dashboard and can be replayed later.
+
+Disabling an endpoint cancels its `pending` deliveries in the same request. The worker also checks
+`disabled` before sending, for messages that were already in the queue. Delivered and
+`failed_permanent` deliveries keep their status. A send that is already in flight when the endpoint
+is disabled still finishes, and its attempt is recorded. If it succeeds, the delivery is
+`delivered`, because it was. If it fails, it stays `cancelled`: no retry, no `failed_permanent`,
+no alert email.
+
 ---
 
 ## 8. Circuit Breaker
