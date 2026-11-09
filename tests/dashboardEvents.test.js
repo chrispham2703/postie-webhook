@@ -22,6 +22,8 @@ describe('/api/dashboard/events (integration, needs docker compose up + seed)', 
     let token;
     let eventId1;
     let eventId2;
+    let cancelledEventId;
+    let cancelledDeliveryId;
 
     const otherOrgId = `org_dashevttest_${crypto.randomUUID()}`;
     let otherToken;
@@ -37,6 +39,15 @@ describe('/api/dashboard/events (integration, needs docker compose up + seed)', 
         });
         await prisma.event.create({
             data: { id: eventId2, appId: 'app_test_1', eventType: 'dashboard.test', payload: { seq: 2 } },
+        });
+
+        cancelledEventId = `evt_dashtest_${crypto.randomUUID()}`;
+        cancelledDeliveryId = `del_dashtest_${crypto.randomUUID()}`;
+        await prisma.event.create({
+            data: { id: cancelledEventId, appId: 'app_test_1', eventType: 'dashboard.test', payload: { seq: 3 } },
+        });
+        await prisma.delivery.create({
+            data: { id: cancelledDeliveryId, eventId: cancelledEventId, endpointId: 'ep_test_1', status: 'cancelled' },
         });
 
         await prisma.organization.create({
@@ -58,7 +69,7 @@ describe('/api/dashboard/events (integration, needs docker compose up + seed)', 
     });
 
     afterAll(async () => {
-        await prisma.event.deleteMany({ where: { id: { in: [eventId1, eventId2, otherEventId] } } });
+        await prisma.event.deleteMany({ where: { id: { in: [eventId1, eventId2, cancelledEventId, otherEventId] } } });
         await prisma.application.deleteMany({ where: { orgId: otherOrgId } });
         await prisma.organization.delete({ where: { id: otherOrgId } });
         await prisma.$disconnect();
@@ -122,5 +133,24 @@ describe('/api/dashboard/events (integration, needs docker compose up + seed)', 
         expect(res.status).toBe(200);
         expect(res.body.data.some((e) => e.id === eventId1)).toBe(false);
         expect(res.body.data.some((e) => e.id === otherEventId)).toBe(true);
+    });
+
+    test('filters by status=cancelled and shows the cancelled delivery on the event detail', async () => {
+        const listRes = await request(buildApp())
+            .get('/api/dashboard/events')
+            .query({ status: 'cancelled' })
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(listRes.status).toBe(200);
+        expect(listRes.body.data.some((e) => e.id === cancelledEventId)).toBe(true);
+
+        const detailRes = await request(buildApp())
+            .get(`/api/dashboard/events/${cancelledEventId}`)
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(detailRes.status).toBe(200);
+        const delivery = detailRes.body.data.deliveries.find((d) => d.id === cancelledDeliveryId);
+        expect(delivery).toBeDefined();
+        expect(delivery.status).toBe('cancelled');
     });
 });

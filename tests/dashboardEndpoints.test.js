@@ -3,7 +3,9 @@ const express = require('express');
 const request = require('supertest');
 const { PrismaClient } = require('@prisma/client');
 const dashboardEndpointsRouter = require('../src/routes/dashboardEndpoints.js');
+const axios = require('axios');
 const { createDeliveries } = require('../src/services/deliveryService.js');
+const { handleDelivery } = require('../src/workers/deliveryWorker.js');
 const { sign } = require('../src/utils/jwt.js');
 const { hashKey } = require('../src/middleware/apiKeyAuth.js');
 
@@ -277,6 +279,94 @@ describe('/api/dashboard/endpoints (integration, needs docker compose up)', () =
 
             const after = await createDeliveries(await newEvent());
             expect(after.some((d) => d.endpointId === createdId)).toBe(false);
+        });
+    });
+
+    describe('disabling cancels deliveries still waiting', () => {
+        let postSpy;
+
+        beforeEach(() => {
+            postSpy = jest.spyOn(axios, 'post').mockResolvedValue({ status: 200, data: {} });
+        });
+
+        afterEach(() => {
+            postSpy.mockRestore();
+        });
+
+        async function endpointWithDeliveries() {
+            const created = await as(ownerToken).post({ appId, url: 'https://httpbin.org/status/200' });
+            const endpointId = created.body.data.id;
+            const event = await prisma.event.create({
+                data: { id: `evt_${crypto.randomUUID()}`, appId, eventType: 'order.created', payload: { a: 1 } },
+            });
+            const later = new Date(Date.now() + 6 * 60 * 60 * 1000);
+            const [pending, delivered] = await Promise.all([
+                prisma.delivery.create({
+                    data: { id: `del_${crypto.randomUUID()}`, eventId: event.id, endpointId, attemptCount: 4, nextAttemptAt: later },
+                }),
+                prisma.delivery.create({
+                    data: { id: `del_${crypto.randomUUID()}`, eventId: (await prisma.event.create({
+                        data: { id: `evt_${crypto.randomUUID()}`, appId, eventType: 'order.created', payload: { a: 2 } },
+                    })).id, endpointId, attemptCount: 1, status: 'delivered' },
+                }),
+            ]);
+            return { endpointId, pending, delivered };
+        }
+
+        function statusOf(id) {
+            return prisma.delivery.findUnique({ where: { id } });
+        }
+
+        test('PATCH disabled: true cancels pending deliveries right away, and leaves finished ones alone', async () => {
+            const { endpointId, pending, delivered } = await endpointWithDeliveries();
+
+            const res = await as(ownerToken).patch(endpointId, { disabled: true });
+            expect(res.status).toBe(200);
+
+            const freshPending = await statusOf(pending.id);
+            expect(freshPending.status).toBe('cancelled');
+            expect(freshPending.nextAttemptAt).toBeNull();
+            expect((await statusOf(delivered.id)).status).toBe('delivered');
+        });
+
+        test('disable then re-enable before the worker runs: the delivery is still never sent', async () => {
+            const { endpointId, pending } = await endpointWithDeliveries();
+
+            await as(ownerToken).patch(endpointId, { disabled: true });
+            await as(ownerToken).patch(endpointId, { disabled: false });
+            await handleDelivery(pending.id);
+
+            expect(postSpy).not.toHaveBeenCalled();
+            expect((await statusOf(pending.id)).status).toBe('cancelled');
+        });
+
+        test('a PATCH that does not disable leaves pending deliveries alone', async () => {
+            const { endpointId, pending } = await endpointWithDeliveries();
+
+            await as(ownerToken).patch(endpointId, { description: 'just a rename' });
+            await as(ownerToken).patch(endpointId, { disabled: false });
+
+            expect((await statusOf(pending.id)).status).toBe('pending');
+        });
+
+        test('a rejected PATCH (422, or 404 from another org) leaves pending deliveries alone', async () => {
+            const { endpointId, pending } = await endpointWithDeliveries();
+
+            const invalid = await as(ownerToken).patch(endpointId, { disabled: 'true' });
+            expect(invalid.status).toBe(422);
+            const crossOrg = await as(otherOrgToken).patch(endpointId, { disabled: true });
+            expect(crossOrg.status).toBe(404);
+
+            expect((await statusOf(pending.id)).status).toBe('pending');
+        });
+
+        test('disabling one endpoint does not cancel another endpoint\'s deliveries', async () => {
+            const first = await endpointWithDeliveries();
+            const second = await endpointWithDeliveries();
+
+            await as(ownerToken).patch(first.endpointId, { disabled: true });
+
+            expect((await statusOf(second.pending.id)).status).toBe('pending');
         });
     });
 });

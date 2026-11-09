@@ -78,6 +78,49 @@ describe('/api/endpoints (integration, needs docker compose up + seed)', () => {
             .send({ disabled: true });
     });
 
+    // Own throwaway org, so a failed assertion can't leave rows in the seed app.
+    describe('disabling cancels pending deliveries', () => {
+        const orgId = `org_eptest_${crypto.randomUUID()}`;
+        const appId = `app_eptest_${crypto.randomUUID()}`;
+        const rawKey = `test_${crypto.randomUUID()}`;
+
+        beforeAll(async () => {
+            await prisma.organization.create({ data: { id: orgId, name: 'Endpoint Cancel Test Org', slug: `ep-cancel-${Date.now()}` } });
+            await prisma.application.create({ data: { id: appId, orgId, name: 'Endpoint Cancel Test App' } });
+            await prisma.apiKey.create({
+                data: { id: `key_${crypto.randomUUID()}`, keyHash: hashKey(rawKey), prefix: rawKey.slice(0, 12), name: 'cancel test key', orgId },
+            });
+        });
+
+        afterAll(async () => {
+            await prisma.organization.delete({ where: { id: orgId } }); // cascades key/app/endpoint/event/delivery
+        });
+
+        test('PATCH disabled: true cancels the endpoint\'s pending deliveries right away', async () => {
+            const created = await request(buildApp())
+                .post('/api/endpoints')
+                .set('Authorization', `Bearer ${rawKey}`)
+                .send({ appId, url: 'https://httpbin.org/post' });
+            const endpointId = created.body.data.id;
+            const event = await prisma.event.create({
+                data: { id: `evt_${crypto.randomUUID()}`, appId, eventType: 'order.created', payload: { a: 1 } },
+            });
+            const pending = await prisma.delivery.create({
+                data: { id: `del_${crypto.randomUUID()}`, eventId: event.id, endpointId, attemptCount: 2, nextAttemptAt: new Date(Date.now() + 60 * 60 * 1000) },
+            });
+
+            const res = await request(buildApp())
+                .patch(`/api/endpoints/${endpointId}`)
+                .set('Authorization', `Bearer ${rawKey}`)
+                .send({ disabled: true });
+            expect(res.status).toBe(200);
+
+            const fresh = await prisma.delivery.findUnique({ where: { id: pending.id } });
+            expect(fresh.status).toBe('cancelled');
+            expect(fresh.nextAttemptAt).toBeNull();
+        });
+    });
+
     test('POST 422s when appId is an array', async () => {
         const res = await request(buildApp())
             .post('/api/endpoints')

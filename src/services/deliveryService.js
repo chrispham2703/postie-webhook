@@ -37,5 +37,14 @@ async function createDeliveries(event) {
 
     return deliveries;
 }
+// Disabled means stopped for good: cancel everything still waiting the moment
+// it's disabled, so re-enabling later can't send it. Finished deliveries
+// (delivered / failed_permanent) keep their status.
+async function cancelPendingDeliveries(endpointId) {
+    return prisma.delivery.updateMany({
+        where: { endpointId, status: 'pending' },
+        data: { status: 'cancelled', nextAttemptAt: null },
+    });
+}
 
-module.exports = { matchesEvent, findMatchingEndpoints, createDeliveries };
+module.exports = { matchesEvent, findMatchingEndpoints, createDeliveries, cancelPendingDeliveries };

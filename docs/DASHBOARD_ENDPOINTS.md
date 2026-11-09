@@ -144,7 +144,7 @@ The store gets one additive change: `findAllForOrg(orgId, { appId } = {})`, whic
 | 3 | `appId` from another org on POST or `?appId=` | Endpoint attached to someone else's app, or existence leak | `findOwnedApplication` → 404, same message as a missing app. |
 | 4 | Endpoint id from another org on GET/PATCH | Read or modify another org's endpoint | `findByIdForOrg` scoped through `app.orgId` → 404. |
 | 5 | An API key sent to the dashboard route | Customer servers reach dashboard routes | `userAuth` rejects it → 401. Tested with a real stored key. |
-| 6 | Disabling doesn't stop in-flight deliveries | Admin disables a broken or compromised URL, but queued deliveries and pending retries still go out (worker and `retryPoller` don't check `disabled`) | **Existing gap, not introduced here.** Becomes more visible once the dashboard has a "Disable" button. Fix: the worker skips and marks the delivery when `endpoint.disabled` is true. Its own PR, next after this one, before the frontend button (BACKLOG.md). |
+| 6 | Disabling doesn't stop in-flight deliveries | Admin disables a broken or compromised URL, but queued deliveries and pending retries still go out (worker and `retryPoller` don't check `disabled`) | **Existing gap, not introduced here.** Becomes more visible once the dashboard has a "Disable" button. **Fixed in the follow-up PR:** the worker marks the delivery `cancelled` without sending it, and never sends a cancelled delivery again, even after re-enabling. |
 | 7 | `url` points at an internal address (`http://localhost`, `169.254.169.254`) | SSRF from the delivery worker | Existing gap on `/api/endpoints` too. The dashboard widens who can set URLs to every admin. In BACKLOG.md; not fixed here. |
 | 8 | Refactor of shared validators changes `/api/endpoints` behaviour | Breaks customers' servers | `tests/endpoints.test.js` must pass with no edits, except new tests for the `disabled` fix. |
 | 9 | `headers` later starts holding auth tokens for customers' servers | Members would see them through `PUBLIC_FIELDS` | Not an issue today (always null). Note in `endpointStore.js` that `headers` must leave `PUBLIC_FIELDS` before it becomes settable. |
@@ -193,7 +193,8 @@ cleanup in `afterAll` (org delete cascades). No seed `org_test_1`.
 
 In BACKLOG.md:
 
-- Worker and retry poller skipping disabled endpoints (failure mode 6). **Next PR.**
+- ~~Worker and retry poller skipping disabled endpoints (failure mode 6).~~ Done in the follow-up
+  PR; "pause an endpoint" is in BACKLOG.md instead.
 - Secret reveal / rotate.
 - SSRF protection on endpoint URLs (failure mode 7).
 - Applying the router-level role rule to `dashboardApplications.js`.

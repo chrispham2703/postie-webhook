@@ -8,6 +8,7 @@ const STATUS_COLORS = {
   delivered: '#2e7d32', // green
   pending: '#f9a825', // yellow
   failed_permanent: '#c62828', // red
+  cancelled: '#757575', // grey -- endpoint was disabled, never sent
 };
 
 const STATUS_FILTERS = [
@@ -15,6 +16,7 @@ const STATUS_FILTERS = [
   { value: 'pending', label: 'Pending' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'failed_permanent', label: 'Dead letter (failed permanently)' },
+  { value: 'cancelled', label: 'Cancelled (endpoint disabled)' },
 ];
 
 export function StatusBadge({ status }) {

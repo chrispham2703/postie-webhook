@@ -4,6 +4,7 @@ const { query, validationResult } = require('express-validator');
 
 const endpointStore = require('../store/endpointStore.js');
 const { findOwnedApplication } = require('../services/applicationService.js');
+const { cancelPendingDeliveries } = require('../services/deliveryService.js');
 const { createEndpointRules, updateEndpointRules } = require('../validators/endpointValidators.js');
 const { userAuth } = require('../middleware/userAuth.js');
 const { requireRole } = require('../middleware/requireRole.js');
@@ -92,6 +93,9 @@ router.patch('/:id', updateEndpointRules, async (req, res) => {
         ...(filterTypes !== undefined && { filterTypes }),
         ...(disabled !== undefined && { disabled }),
     });
+    if (disabled === true) {
+        await cancelPendingDeliveries(existing.id);
+    }
 
     res.status(200).json({ data: updated });
 });

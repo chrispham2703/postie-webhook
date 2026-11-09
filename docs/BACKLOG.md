@@ -3,13 +3,18 @@
 Known gaps that were found and deliberately deferred. Before starting work in an area, check
 here first. When an item is done, delete it in the same PR.
 
-## Next
+## Product
 
-- **Disabled endpoints still get in-flight deliveries.** Fan-out skips `disabled: true`
-  (`deliveryService.findMatchingEndpoints`), but `deliveryWorker.handleDelivery` and `retryPoller`
-  never check it, so queued deliveries and pending retries still go out after an endpoint is
-  disabled. Fix in its own PR right after dashboard endpoints, before the frontend Disable button.
-  See `docs/DASHBOARD_ENDPOINTS.md` failure mode 6.
+- **Pause an endpoint.** Disabling is final: queued and retrying deliveries become `cancelled` and
+  are never sent, even after re-enabling. A separate "pause" would hold deliveries and send them on
+  resume (e.g. during a customer's maintenance window). Would need its own status or flag, and the
+  worker to reschedule instead of cancel.
+
+- **Events that arrive while an endpoint is disabled can still reach it after re-enabling.** Fan-out
+  skips disabled endpoints, so those events get no delivery for it. But `recoveryScan` re-runs
+  `createDeliveries` for events still `received` and 5-8 minutes old. If the endpoint is re-enabled
+  inside that window, the scan creates a `pending` delivery and sends it. At odds with "disabling is
+  final". Existed before the cancel change.
 
 ## Security / auth
 
@@ -36,6 +41,11 @@ here first. When an item is done, delete it in the same PR.
 - **`dashboardApplications.js` relies on remembering `requireRole`.** A new PATCH/DELETE that
   forgets it lets members write. `dashboardEndpoints.js` already has the router-level rule (every
   non-GET needs owner/admin); copy it over.
+- **Disabling an endpoint isn't atomic.** PATCH `{ disabled: true }` (`endpoints.js`,
+  `dashboardEndpoints.js`) saves the flag, then calls `cancelPendingDeliveries` as a second write.
+  If the second write fails, the request 500s with the endpoint already disabled and its deliveries
+  still `pending` until the worker reaches them (the worker's own disabled check still stops them
+  being sent). Fix: do both writes in one `prisma.$transaction`.
 - **`messageId` is optional** (product decision). Making it required would break existing
   customers' servers; documented instead.
 
@@ -46,6 +56,11 @@ here first. When an item is done, delete it in the same PR.
   harmless commands (`.encode`, `VALID_KEY`). Worth an `AI_WORKFLOW.md` entry.
 
 ## Tests / tooling
+
+- **Intermittent 404 on dashboard tests, first run only.** Seen twice, neither reproduced: the empty
+  `?appId=` test in `dashboardEndpoints.test.js` and "lists events for the caller org" in
+  `dashboardEvents.test.js` each got 404 on the first run after the test file was edited, then
+  passed on every rerun. Cause unknown.
 
 - **No `test:migrate` script.** `postie_test` needs `prisma migrate deploy` by hand after every new
   migration, or tests fail against the old schema (happened on the messageId change).

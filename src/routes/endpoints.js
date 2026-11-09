@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const endpointStore = require('../store/endpointStore.js');
 const { createEndpointRules, updateEndpointRules } = require('../validators/endpointValidators.js');
 const { findOwnedApplication } = require('../services/applicationService.js');
+const { cancelPendingDeliveries } = require('../services/deliveryService.js');
 const { apiKeyAuth } = require('../middleware/apiKeyAuth.js');
 
 router.use(apiKeyAuth);
@@ -82,6 +83,9 @@ router.patch(
             ...(filterTypes !== undefined && { filterTypes }),
             ...(disabled !== undefined && { disabled }),
         });
+        if (disabled === true) {
+            await cancelPendingDeliveries(existing.id);
+        }
 
         res.status(200).json({ data: updated });
     }
