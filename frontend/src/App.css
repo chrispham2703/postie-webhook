@@ -259,3 +259,160 @@
 .attempt-timeline li:last-child {
   border-bottom: none;
 }
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.show-once {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.show-once-warning {
+  margin: 0;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.show-once-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.show-once-value {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.show-once-hint {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.show-once-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-h);
+}
+
+/* Setup page (docs/ONBOARDING_UI.md) */
+
+.setup-checklist {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+}
+
+.setup-checklist li.is-done {
+  color: var(--text-h);
+}
+
+.setup-complete,
+.setup-readonly {
+  margin: 0 0 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 8px;
+  color: var(--text-h);
+}
+
+.setup-section {
+  display: grid;
+  gap: 10px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+
+.setup-section h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.setup-hint,
+.setup-blocked {
+  margin: 0;
+  color: var(--text);
+}
+
+.setup-blocked {
+  font-style: italic;
+}
+
+.setup-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--text-h);
+}
+
+.setup-meta {
+  color: var(--text);
+  font-size: 0.9em;
+}
+
+.setup-form {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.setup-form label {
+  color: var(--text-h);
+  font-size: 0.95em;
+}
+
+.setup-form input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.setup-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.setup-row input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.setup-code {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}

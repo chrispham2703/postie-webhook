@@ -36,7 +36,7 @@ export function StatusBadge({ status }) {
   );
 }
 
-function EventListHeader({ statusFilter, onStatusFilterChange, onSendTestEvent, sending, onLogout }) {
+function EventListHeader({ statusFilter, onStatusFilterChange, onSendTestEvent, sending, onLogout, onOpenSetup }) {
   return (
     <div className="dashboard-header">
       <h1>Events</h1>
@@ -51,6 +51,9 @@ function EventListHeader({ statusFilter, onStatusFilterChange, onSendTestEvent, 
         <button className="btn-primary" onClick={onSendTestEvent} disabled={sending}>
           {sending ? 'Sending...' : 'Send test event'}
         </button>
+        <button className="btn-secondary" onClick={onOpenSetup}>
+          Setup
+        </button>
         <button className="btn-secondary" onClick={onLogout}>
           Log out
         </button>
@@ -59,7 +62,7 @@ function EventListHeader({ statusFilter, onStatusFilterChange, onSendTestEvent, 
   );
 }
 
-function EventList({ onLogout, onSelectEvent }) {
+function EventList({ onLogout, onSelectEvent, onOpenSetup }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,7 +90,7 @@ function EventList({ onLogout, onSelectEvent }) {
       setCursorStack([]);
       setRefreshKey((k) => k + 1);
     } catch {
-      alert('Could not send a test event — create an Application first (see the backend API).');
+      alert('Could not send a test event — open Setup to create an application and an endpoint first.');
     } finally {
       setSending(false);
     }
@@ -149,7 +152,7 @@ function EventList({ onLogout, onSelectEvent }) {
   if (loading) {
     return (
       <div className="dashboard-page">
-        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
+        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} onOpenSetup={onOpenSetup} />
         <p className="dashboard-status">Loading events...</p>
       </div>
     );
@@ -158,7 +161,7 @@ function EventList({ onLogout, onSelectEvent }) {
   if (error) {
     return (
       <div className="dashboard-page">
-        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
+        <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} onOpenSetup={onOpenSetup} />
         <p className="dashboard-status">Couldn't load events — try again</p>
       </div>
     );
@@ -166,7 +169,7 @@ function EventList({ onLogout, onSelectEvent }) {
 
   return (
     <div className="dashboard-page">
-      <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} />
+      <EventListHeader statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange} onSendTestEvent={handleSendTestEvent} sending={sending} onLogout={onLogout} onOpenSetup={onOpenSetup} />
       <div className="event-table-wrap">
         <table className="event-table">
           <thead>
