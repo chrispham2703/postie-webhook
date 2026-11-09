@@ -8,6 +8,8 @@ function generateSecret() {
 
 // secret is deliberately left out here — same policy as ApiKey: shown once,
 // on create, never again through list/get/patch responses.
+// headers is always null today; take it out of here before it becomes
+// settable, since dashboard members can read everything in this list.
 const PUBLIC_FIELDS = {
     id: true,
     appId: true,
@@ -37,8 +39,11 @@ async function create({ appId, url, description, filterTypes }) {
 }
 
 // Scoped through the app relation so an org can only ever see its own endpoints.
-async function findAllForOrg(orgId) {
-    return prisma.endpoint.findMany({ where: { app: { orgId } }, select: PUBLIC_FIELDS });
+async function findAllForOrg(orgId, { appId } = {}) {
+    return prisma.endpoint.findMany({
+        where: { app: { orgId }, ...(appId && { appId }) },
+        select: PUBLIC_FIELDS,
+    });
 }
 
 async function findByIdForOrg(id, orgId) {

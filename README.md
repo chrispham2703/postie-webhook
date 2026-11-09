@@ -139,6 +139,10 @@ Run the test suite with `npm test` (needs `docker compose up -d` running, and a 
 | `POST /api/dashboard/applications` | Create an application from the dashboard (`owner`/`admin` only). Same applications as `/api/applications`, which stays API-key-only for customers' servers |
 | `GET /api/dashboard/applications` | List your org's applications |
 | `GET /api/dashboard/applications/:id` | Fetch a single application |
+| `POST /api/dashboard/endpoints` | Register an endpoint for one of your applications (`owner`/`admin` only). The signing secret is in this response only, never again. Same endpoints as `/api/endpoints`, which stays API-key-only for customers' servers |
+| `GET /api/dashboard/endpoints` | List your org's endpoints, optionally `?appId=` for one application. Never includes the secret |
+| `GET /api/dashboard/endpoints/:id` | Fetch a single endpoint, without the secret |
+| `PATCH /api/dashboard/endpoints/:id` | Update `url`, `description`, `filterTypes`, or `disabled` (`owner`/`admin` only). No delete: disable instead. Re-enabling doesn't reset a paused circuit breaker |
 
 ## How this was built
 
