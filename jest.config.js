@@ -6,4 +6,6 @@ module.exports = {
     // causing intermittent failures. Suite is small enough that running
     // serially costs a couple seconds and buys back reliability.
     maxWorkers: 1,
+    // frontend/ has its own Vitest suite (and its own CI job); Jest can't parse its JSX.
+    testPathIgnorePatterns: ['/node_modules/', '<rootDir>/frontend/'],
 };
