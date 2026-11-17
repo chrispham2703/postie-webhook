@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import api from './api';
 import EventList from './EventList';
 
@@ -18,27 +18,24 @@ describe('EventList', () => {
     vi.clearAllMocks();
   });
 
-  test('lists every delivery of an event with its own status', async () => {
+  test('counts deliveries per status, delivered first, so a delivered event never looks pending', async () => {
     mockEvents([
       {
         id: 'evt_1',
         eventType: 'order.created',
         createdAt: '2026-11-18T10:00:00.000Z',
         deliveries: [
-          { id: 'dlv_1', status: 'pending', endpoint: { url: 'https://a.example.com/hook' } },
+          { id: 'dlv_1', status: 'failed_permanent', endpoint: { url: 'https://a.example.com/hook' } },
           { id: 'dlv_2', status: 'delivered', endpoint: { url: 'https://b.example.com/hook' } },
+          { id: 'dlv_3', status: 'failed_permanent', endpoint: { url: 'https://c.example.com/hook' } },
         ],
       },
     ]);
     renderList();
 
     const row = (await screen.findByText('order.created')).closest('tr');
-    const items = within(row).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent('https://a.example.com/hook');
-    expect(items[0]).toHaveTextContent('pending');
-    expect(items[1]).toHaveTextContent('https://b.example.com/hook');
-    expect(items[1]).toHaveTextContent('delivered');
+    expect(row).toHaveTextContent(/1 delivered.*2 failed.*3 endpoints/);
+    expect(row).not.toHaveTextContent('https://a.example.com/hook');
   });
 
   test('shows a dash when an event has no deliveries', async () => {
@@ -48,7 +45,7 @@ describe('EventList', () => {
     renderList();
 
     const row = (await screen.findByText('user.deleted')).closest('tr');
-    expect(within(row).queryAllByRole('listitem')).toHaveLength(0);
     expect(row).toHaveTextContent('—');
+    expect(row).not.toHaveTextContent('endpoint');
   });
 });
