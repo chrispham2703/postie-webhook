@@ -175,20 +175,30 @@ function EventList({ onLogout, onSelectEvent, onOpenSetup }) {
           <thead>
             <tr>
               <th>Event type</th>
-              <th>Target URL</th>
-              <th>Status</th>
+              <th>Deliveries</th>
               <th>Created</th>
             </tr>
           </thead>
           <tbody>
             {events.map((event) => {
-              const delivery = event.deliveries?.[0];
+              // One event fans out to every matching endpoint, so show them all.
+              const deliveries = event.deliveries ?? [];
               return (
                 <tr key={event.id} className="event-row" onClick={() => onSelectEvent(event.id)}>
                   <td>{event.eventType}</td>
-                  <td>{delivery?.endpoint?.url ?? '—'}</td>
                   <td>
-                    <StatusBadge status={delivery?.status} />
+                    {deliveries.length === 0 ? (
+                      '—'
+                    ) : (
+                      <ul className="delivery-list">
+                        {deliveries.map((delivery) => (
+                          <li key={delivery.id}>
+                            <span className="delivery-url">{delivery.endpoint?.url ?? '—'}</span>
+                            <StatusBadge status={delivery.status} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                   <td>{new Date(event.createdAt).toLocaleString()}</td>
                 </tr>
@@ -196,7 +206,7 @@ function EventList({ onLogout, onSelectEvent, onOpenSetup }) {
             })}
             {events.length === 0 && (
               <tr>
-                <td colSpan={4} className="dashboard-status">
+                <td colSpan={3} className="dashboard-status">
                   No events match this filter
                 </td>
               </tr>
