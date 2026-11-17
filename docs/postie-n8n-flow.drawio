@@ -1,0 +1,94 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="postie-n8n" name="Postie to n8n">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Group: Postie on Railway -->
+        <mxCell id="gPostie" value="Postie (Railway)" style="swimlane;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="420" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="API&lt;br&gt;POST /api/events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gPostie">
+          <mxGeometry x="20" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="queue" value="Queue&lt;br&gt;(RabbitMQ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gPostie">
+          <mxGeometry x="155" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="Worker&lt;br&gt;signs body with HMAC-SHA256&lt;br&gt;&lt;i&gt;X-Postie-Signature&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gPostie">
+          <mxGeometry x="280" y="40" width="125" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="retry" value="Fails? Retry 30s → 2m → 10m → 1h → 6h → 24h → dead letter" style="text;html=1;align=left;fontSize=11;fontColor=#555555;whiteSpace=wrap;" vertex="1" parent="gPostie">
+          <mxGeometry x="20" y="140" width="390" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Source -->
+        <mxCell id="booking" value="Booking app&lt;br&gt;(customer books)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="60" y="10" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Tunnel -->
+        <mxCell id="tunnel" value="Cloudflare Tunnel&lt;br&gt;public URL → laptop" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="160" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Group: n8n in Docker -->
+        <mxCell id="gN8n" value="n8n (Docker, port 5679 → 5678)" style="swimlane;rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="700" y="120" width="660" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="webhook" value="Webhook&lt;br&gt;/webhook/postie" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gN8n">
+          <mxGeometry x="20" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="crypto" value="Crypto&lt;br&gt;HMAC with shared secret" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gN8n">
+          <mxGeometry x="155" y="50" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ifnode" value="Signatures&lt;br&gt;match?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gN8n">
+          <mxGeometry x="300" y="35" width="110" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="approval" value="&lt;b&gt;Human approval&lt;/b&gt;&lt;br&gt;AI drafts reply,&lt;br&gt;owner taps OK&lt;br&gt;&lt;i&gt;(planned, not built)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;dashed=1;strokeColor=#9673a6;" vertex="1" parent="gN8n">
+          <mxGeometry x="440" y="40" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="drop" value="Dropped&lt;br&gt;(stays silent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="gN8n">
+          <mxGeometry x="300" y="190" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Telegram -->
+        <mxCell id="telegram" value="Telegram&lt;br&gt;owner's phone buzzes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="500" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" value="event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="booking" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="api" target="queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="queue" target="worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="HTTPS POST" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="worker" target="tunnel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="tunnel" target="webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="webhook" target="crypto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="crypto" target="ifnode">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="true" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="ifnode" target="approval">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="false" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;" edge="1" parent="1" source="ifnode" target="drop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="today: true goes straight here" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="approval" target="telegram">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
