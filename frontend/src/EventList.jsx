@@ -19,7 +19,23 @@ const STATUS_FILTERS = [
   { value: 'cancelled', label: 'Cancelled (endpoint disabled)' },
 ];
 
-export function StatusBadge({ status }) {
+// Order the per-status counts in the list view, best outcome first.
+const STATUS_ORDER = ['delivered', 'pending', 'failed_permanent', 'cancelled'];
+const SHORT_LABELS = { failed_permanent: 'failed' };
+
+// Count deliveries per status, e.g. [{ status: 'delivered', count: 1 }, { status: 'failed_permanent', count: 5 }].
+function summarizeDeliveries(deliveries) {
+  const counts = new Map();
+  for (const { status } of deliveries) {
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  const rank = (status) => (STATUS_ORDER.includes(status) ? STATUS_ORDER.indexOf(status) : STATUS_ORDER.length);
+  return [...counts.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([status, count]) => ({ status, count }));
+}
+
+export function StatusBadge({ status, label }) {
   const color = STATUS_COLORS[status] || STATUS_COLORS.pending;
   return (
     <span
@@ -31,7 +47,7 @@ export function StatusBadge({ status }) {
         fontSize: '0.85em',
       }}
     >
-      {status || 'unknown'}
+      {label ?? (status || 'unknown')}
     </span>
   );
 }
@@ -181,8 +197,10 @@ function EventList({ onLogout, onSelectEvent, onOpenSetup }) {
           </thead>
           <tbody>
             {events.map((event) => {
-              // One event fans out to every matching endpoint, so show them all.
+              // One event fans out to every matching endpoint. The row shows a
+              // count per status; the detail page lists each endpoint.
               const deliveries = event.deliveries ?? [];
+              const endpointUrls = deliveries.map((d) => d.endpoint?.url ?? '—').join('\n');
               return (
                 <tr key={event.id} className="event-row" onClick={() => onSelectEvent(event.id)}>
                   <td>{event.eventType}</td>
@@ -190,14 +208,18 @@ function EventList({ onLogout, onSelectEvent, onOpenSetup }) {
                     {deliveries.length === 0 ? (
                       '—'
                     ) : (
-                      <ul className="delivery-list">
-                        {deliveries.map((delivery) => (
-                          <li key={delivery.id}>
-                            <span className="delivery-url">{delivery.endpoint?.url ?? '—'}</span>
-                            <StatusBadge status={delivery.status} />
-                          </li>
+                      <div className="delivery-summary" title={endpointUrls}>
+                        {summarizeDeliveries(deliveries).map(({ status, count }) => (
+                          <StatusBadge
+                            key={status}
+                            status={status}
+                            label={`${count} ${SHORT_LABELS[status] ?? status}`}
+                          />
                         ))}
-                      </ul>
+                        <span className="delivery-count">
+                          {deliveries.length} {deliveries.length === 1 ? 'endpoint' : 'endpoints'}
+                        </span>
+                      </div>
                     )}
                   </td>
                   <td>{new Date(event.createdAt).toLocaleString()}</td>
