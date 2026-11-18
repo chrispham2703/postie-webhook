@@ -37,7 +37,7 @@ Steps 4 and 5 matter most to me: they stop me shipping code I don't understand. 
 ## 3. Evidence
 
 - **Output:** 41 merged PRs. CI runs the test suite on every push.
-- **Time per feature:** I aim for one small PR per hour. Git backs it up: on 8 Nov, PRs #58–#64 opened 34–80 minutes apart. Earlier (Weeks 3–8) I worked in big batches, like 7 PRs opened within 10 minutes on 2 Aug, or #55, a single PR with the circuit breaker, dashboard and CI together.
+- **Time per feature:** I aim for one small PR per hour. Git backs it up: on 9 Nov (Brisbane time), PRs #58–#64 opened 34–80 minutes apart. Earlier (Weeks 3–8) I worked in big batches, like 7 PRs opened within 10 minutes on 3 Aug, or #55, a single PR with the circuit breaker, dashboard and CI together.
 - **Review share:** about 15–20 minutes of each hour goes to reading the diff and `/why`, so roughly a quarter to a third. *(My estimate, not timed.)*
 - **What review caught:** the code-reviewer agent flagged that endpoint secrets were returned on list/get/patch (fixed in #51). It also flagged an API key used in the browser ([failure log](AI_WORKFLOW.md), Entry 4).
 - **What a hook didn't catch:** when I tested my own `block-secrets` hook, I found ways around it (Entry 9). The hook guards against slips. It is not a wall.
@@ -54,11 +54,11 @@ Full details: [AI_WORKFLOW.md](AI_WORKFLOW.md), Entries 1–4 and 9.
 
 ## 5. The business layer
 
-Postie's events can drive real workflows for non-technical owners. A working example: Postie → n8n (self-hosted in Docker) → signature check → Telegram. When a booking event arrives with a valid signature, the owner's phone buzzes. A fake or tampered event is dropped silently.
+Postie's events can drive real workflows for non-technical owners. A working example: Postie → n8n (self-hosted in Docker) → signature check → owner approval → Telegram. When a booking event arrives with a valid signature, the owner gets the booking on Telegram with Approve and Decline buttons. Approve sends a confirmation; Decline sends a "declined" note instead. Telling the end customer is the next step: the event would need the customer's email, and each branch gets one more node (email, or a call back to the booking app). A fake or tampered event is dropped silently.
 
 **Why it matters to a business:** a spa owner who checks messages by hand will miss bookings, and each missed booking is lost revenue. The workflow costs about $15/month to run *(estimate)*. A worked cost example is in [AI_FOR_BUSINESS.md](AI_FOR_BUSINESS.md).
 
-**Next step, not built yet:** a human-approval step. The AI drafts the reply to the customer, the owner taps "approve" in Telegram, and only then is it sent. The AI drafts and the human decides, because a wrong time or price sent to a real customer costs trust.
+**The human-approval step:** the workflow pauses until the owner taps a button, and nothing is confirmed without it. The machine drafts and the human decides, because a wrong time or price sent to a real customer costs trust. Testing it the wrong way round found a bug: at first, Decline still sent the confirmation, until I added a check on the owner's answer.
 
 ## 6. Limits
 
@@ -76,4 +76,4 @@ Locks can have holes too (my secret hook did), so I test them by trying to break
 
 ![Postie to n8n flow](postie-n8n-flow.png)
 
-Postie signs each event with HMAC-SHA256 and retries failures on a ladder (30s → 24h → dead letter). n8n recomputes the signature with the shared secret: a match goes on to Telegram, a mismatch is dropped. The dashed box is the planned human-approval step. Source: [`postie-n8n-flow.drawio`](postie-n8n-flow.drawio).
+Postie signs each event with HMAC-SHA256 and retries failures on a ladder (30s → 24h → dead letter). n8n recomputes the signature with the shared secret: a match goes on to Telegram, a mismatch is dropped. The approval step pauses the workflow until the owner taps Approve or Decline. Source: [`postie-n8n-flow.drawio`](postie-n8n-flow.drawio).

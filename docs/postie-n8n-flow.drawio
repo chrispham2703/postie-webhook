@@ -45,7 +45,7 @@
         <mxCell id="ifnode" value="Signatures&lt;br&gt;match?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;" vertex="1" parent="gN8n">
           <mxGeometry x="300" y="35" width="110" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="approval" value="&lt;b&gt;Human approval&lt;/b&gt;&lt;br&gt;AI drafts reply,&lt;br&gt;owner taps OK&lt;br&gt;&lt;i&gt;(planned, not built)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;dashed=1;strokeColor=#9673a6;" vertex="1" parent="gN8n">
+        <mxCell id="approval" value="&lt;b&gt;Human approval&lt;/b&gt;&lt;br&gt;owner taps&lt;br&gt;Approve / Decline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="gN8n">
           <mxGeometry x="440" y="40" width="190" height="80" as="geometry" />
         </mxCell>
         <mxCell id="drop" value="Dropped&lt;br&gt;(stays silent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="gN8n">
@@ -79,13 +79,13 @@
         <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="crypto" target="ifnode">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e8" value="true" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="1" source="ifnode" target="approval">
+        <mxCell id="e8" value="true" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="ifnode" target="approval">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e9" value="false" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;" edge="1" parent="1" source="ifnode" target="drop">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e10" value="today: true goes straight here" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="approval" target="telegram">
+        <mxCell id="e10" value="Approve" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="approval" target="telegram">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
